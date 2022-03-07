@@ -191,6 +191,9 @@ def fine_tuning_IMDB(task_name, state_path=None):
         batch_num = 0
         total_loss = 0.0
         for inputs, mask, label in trainloader:
+            inputs = inputs.to(device)
+            mask = mask.to(device)
+            label = label.to(device)
             output = model(inputs, mask)
             loss = criterion(output, label)
             if batch_num%50 == 0:
