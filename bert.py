@@ -21,16 +21,19 @@ class SimpleBert(nn.Module):
         self.linear = nn.Linear(self.d_model * self.seq_len, self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, inputs):
+    def forward(self, inputs, mask):
         '''
         :param inputs: N * seq_len
-        :return: N * seq_len * output_size (after softmax, represent probability)
+        :param mask: N * seq_len
+        :var bert_output: N * seq_len * hidden_size
+        :return: N * output_size (after softmax, represent probability)
+            classification logits
         '''
-        bert_feature, _ = self.bert(inputs)
+        bert_feature, _ = self.bert(inputs, attention_mask=mask)
         bert_output = bert_feature[11]
         print(bert_output.shape)
         batch_size = bert_feature[11].shape[0]
-        context = self.linear(bert_feature[11].view(batch_size, -1))
+        context = self.linear(bert_output.view(batch_size, -1))
         outputs = self.softmax(context)
         return outputs
 
@@ -149,7 +152,8 @@ class IMDBDataSet(Dataset):
         return self.input_idx[idx], self.mask_idx[idx], self.label_idx[idx]
 
 
-def train():
+def fine_tuning_IMDB(task_name, state_path=None):
+    # load training data and indexing texts
     print("Indexing Training Data......")
     train_file = "/content/drive/MyDrive/bert/IMDBtrain.csv"
     train_token_file = "/content/drive/MyDrive/bert/IMDBtrain_token.txt"
@@ -158,41 +162,57 @@ def train():
     train_label_file = "/content/drive/MyDrive/bert/IMDBtrain_label.txt"
     trainloader = DataLoader(IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
                              batch_size=32, shuffle=True)
+    t_batch = len(trainloader)
     print("Index Training Data Done.")
-    '''
-    print("Indexing Testing Data......")
-    test_file = "IMDBtest.csv"
-    testloader = DataLoader(IMDBDataSet(test_file), batch_size=32, shuffle=True)
-    print("Index Testing Data Done.")
-    '''
 
+    # prepare BERT model and set hyper params
     print("Model Config......")
     model = SimpleBert(512, 2).to(device)
     model.train()
 
-    epoch_num = 4
+    init_epoch = 0
+    t_epoch = 4
     lr = 2e-5
     warmup = 0.1
     t_total = 1e5
 
-    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    criterion = nn.CrossEntropyLoss()
     optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
+    if state_path is not None:
+        init_state = torch.load(state_path)
+        model.load_state_dict(init_state['state_dict'])
+        optimizer.load_state_dict(init_state['optimizer'])
+        init_epoch = init_state['epoch']
     print("Model Config Done.")
 
+    # fine tuning BERT
     print("Start Training.")
-    print("WARNING: This is only a demo of reading dataloader!")
-    remaining = 2
-    for inputs, mask, label in trainloader:
-        remaining -= 1
-        inputs.to(device)
-        mask.to(device)
-        label.to(device)
-        if remaining >= 0:
-            print("inputs shape: {}\nmask shape: {}\nlabel shape:{}".format(inputs.shape, mask.shape, label.shape))
-            print("inputs: {}\n mask: {}\n label: {}".format(inputs, mask, label))
-
+    for epoch in range(init_epoch, t_epoch):
+        batch_num = 0
+        total_loss = 0.0
+        for inputs, mask, label in trainloader:
+            output = model(inputs, mask)
+            loss = criterion(output, label)
+            if batch_num%50 == 0:
+                print("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch+1, t_epoch, batch_num+1, t_batch, loss.item()))
+            total_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print("epoch {}/{}, training done. Total loss = {:.6f}".format(epoch+1, t_epoch, total_loss))
+        cur_state = {
+            "epoch": epoch,
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict()
+        }
+        torch.save(cur_state, "/content/drive/MyDrive/bert/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        print("epoch {}/{}, model checkpoint saved.".format(epoch+1, t_epoch))
+    print("Saving Model......")
+    torch.save(model.state_dict(), "/content/drive/MyDrive/bert/checkpoint/{}.pb".format(task_name))
+    print("Model saved.")
     print("Training Done.")
 
 
 if __name__ == "__main__":
-    train()
+    task_name = "IMDB_BERT_Linear_FiT"
+    fine_tuning_IMDB(task_name)
