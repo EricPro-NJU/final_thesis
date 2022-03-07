@@ -122,7 +122,7 @@ class IMDBDataSet(Dataset):
                                                                        label_file)
             self.input_idx = torch.LongTensor(index_list)  # num * seq_len
             self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
-            self.label_idx = torch.LongTensor(label_logits(label_list, 2))  # num * 2
+            self.label_idx = torch.LongTensor(label_list)  # num * 2
         else:
             if index_file is None or mask_file is None or label_file is None:
                 raise FileNotFoundError("You should identify source file of data.")
@@ -143,7 +143,7 @@ class IMDBDataSet(Dataset):
                     label.append(eval(line))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
-            self.label_idx = torch.LongTensor(label_logits(label, 2))
+            self.label_idx = torch.LongTensor(label)
 
     def __len__(self):
         return self.input_idx.shape[0]
@@ -153,15 +153,16 @@ class IMDBDataSet(Dataset):
 
 
 def fine_tuning_IMDB(task_name, state_path=None):
+    torch.cuda.empty_cache()
     # load training data and indexing texts
     print("Indexing Training Data......")
-    train_file = "/content/drive/MyDrive/bert/IMDBtrain.csv"
-    train_token_file = "/content/drive/MyDrive/bert/IMDBtrain_token.txt"
-    train_index_file = "/content/drive/MyDrive/bert/IMDBtrain_index.txt"
-    train_mask_file = "/content/drive/MyDrive/bert/IMDBtrain_mask.txt"
-    train_label_file = "/content/drive/MyDrive/bert/IMDBtrain_label.txt"
+    train_file = "/root/autodl-nas/IMDBtrain.csv"
+    train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
+    train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
+    train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
+    train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
     trainloader = DataLoader(IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
-                             batch_size=32, shuffle=True)
+                             batch_size=8, shuffle=True)
     t_batch = len(trainloader)
     print("Index Training Data Done.")
 
@@ -195,6 +196,7 @@ def fine_tuning_IMDB(task_name, state_path=None):
             mask = mask.to(device)
             label = label.to(device)
             output = model(inputs, mask)
+            # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             if batch_num%50 == 0:
                 print("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch+1, t_epoch, batch_num+1, t_batch, loss.item()))
@@ -208,10 +210,10 @@ def fine_tuning_IMDB(task_name, state_path=None):
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
-        torch.save(cur_state, "/content/drive/MyDrive/bert/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
         print("epoch {}/{}, model checkpoint saved.".format(epoch+1, t_epoch))
     print("Saving Model......")
-    torch.save(model.state_dict(), "/content/drive/MyDrive/bert/checkpoint/{}.pb".format(task_name))
+    torch.save(model.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
     print("Model saved.")
     print("Training Done.")
 
