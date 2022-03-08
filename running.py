@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import time
 from pytorch_pretrained_bert import BertAdam
 from datasets import IMDBDataSet
-from bert import SimpleBert
+from bert import SimpleBert, RecBert
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -37,7 +37,7 @@ class Log:
                                                                 time.strftime("%Y%m%d%H%M%S", time.localtime()))
 
 
-def fine_tuning_IMDB(task_name, state_path=None, batch_size=16):
+def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="linear", bidirec=True):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -54,7 +54,16 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16):
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
-    model = SimpleBert(512, 2).to(device)
+    if model_name == "linear":
+        model = SimpleBert(512, 2).to(device)
+        lg.log("choosing BERT + Linear model.")
+    elif model_name == "lstm":
+        model = RecBert(512, 2, bidirec).to(device)
+        lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
+    else:
+        model = SimpleBert(512, 2).to(device)
+        lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
+        lg.log("choosing BERT + Linear model.")
     model.train()
 
     init_epoch = 0
@@ -86,13 +95,15 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16):
             output = model(inputs, mask)
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
-            if batch_num % 50 == 0:
+            if (batch_num + 1) % 50 == 0:
                 lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
                                                                         loss.item()))
             total_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            batch_num += 1
+
         this_time = time.time()
         lg.log(
             "epoch {}/{}, training done. Average loss = {:.6f}, Time Elapse this epoch : {}".format(epoch + 1, t_epoch,
@@ -118,7 +129,7 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16):
     lg.writelog()
 
 
-def evaluate_IMDB(task_name, model_path, batch_size=16):
+def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bidirec=True):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load testing data and indexing texts
@@ -135,7 +146,16 @@ def evaluate_IMDB(task_name, model_path, batch_size=16):
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
-    model = SimpleBert(512, 2).to(device)
+    if model_name == "linear":
+        model = SimpleBert(512, 2).to(device)
+        lg.log("choosing BERT + Linear model.")
+    elif model_name == "lstm":
+        model = RecBert(512, 2, bidirec).to(device)
+        lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
+    else:
+        model = SimpleBert(512, 2).to(device)
+        lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
+        lg.log("choosing BERT + Linear model.")
     model.load_state_dict(torch.load(model_path))
     model.eval()
     criterion = nn.CrossEntropyLoss()
@@ -147,23 +167,23 @@ def evaluate_IMDB(task_name, model_path, batch_size=16):
     val_cor = 0
 
     batch_num = 0
+    with torch.no_grad():
+        for inputs, mask, label in testloader:
+            inputs = inputs.to(device)
+            mask = mask.to(device)
+            label = label.to(device)
+            output = model(inputs, mask)
+            # N * output_size (after softmax, represent probability)  eg. N * 2
+            loss = criterion(output, label)
+            val_loss += loss.item()
 
-    for inputs, mask, label in testloader:
-        inputs = inputs.to(device)
-        mask = mask.to(device)
-        label = label.to(device)
-        output = model(inputs, mask)
-        # N * output_size (after softmax, represent probability)  eg. N * 2
-        loss = criterion(output, label)
-        val_loss += loss.item()
-
-        prediction = output.argmax(dim=-1)
-        answer = label.view(-1)
-        val_total += prediction.shape[0]
-        val_cor += prediction[prediction == answer].shape[0]
-        if (batch_num + 1) % 50 == 0:
-            lg.log("Testing {} / {} done.".format(batch_num + 1, t_batch))
-        batch_num += 1
+            prediction = output.argmax(dim=-1)
+            answer = label.view(-1)
+            val_total += prediction.shape[0]
+            val_cor += prediction[prediction == answer].shape[0]
+            if (batch_num + 1) % 50 == 0:
+                lg.log("Testing {} / {} done.".format(batch_num + 1, t_batch))
+            batch_num += 1
 
     val_loss = val_loss / t_batch
     acc = val_cor / val_total
@@ -172,7 +192,7 @@ def evaluate_IMDB(task_name, model_path, batch_size=16):
 
 
 if __name__ == "__main__":
-    task_name = "IMDB_BERT_Linear_FiT"
-    fine_tuning_IMDB(task_name)
+    task_name = "IMDB_BERT_LSTM_FiT"
+    fine_tuning_IMDB(task_name, model_name="lstm")
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate_IMDB(task_name, model_path)
+    evaluate_IMDB(task_name, model_path, model_name="lstm")
