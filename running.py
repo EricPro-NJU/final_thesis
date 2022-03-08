@@ -193,6 +193,7 @@ def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bid
 
 
 if __name__ == "__main__":
+    # this is a test of pushing codes from gpu server
     task_name = "IMDB_BERT_LSTM_FiT"
     fine_tuning_IMDB(task_name, model_name="lstm")
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
