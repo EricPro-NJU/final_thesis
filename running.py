@@ -79,6 +79,7 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="line
         model.load_state_dict(init_state['state_dict'])
         optimizer.load_state_dict(init_state['optimizer'])
         init_epoch = init_state['epoch']
+        lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch, init_epoch+1))
     lg.log("Model Config Done.")
 
     # fine tuning BERT
