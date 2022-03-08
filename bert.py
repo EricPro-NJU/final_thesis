@@ -35,16 +35,19 @@ class SimpleBert(nn.Module):
 
 
 class RecBert(nn.Module):
-    def __init__(self, seq_len, output_size, bidirec=True):
+    def __init__(self, seq_len, hidden_size, output_size, bidirec=True):
         super(RecBert, self).__init__()
         self.seq_len = seq_len
+        self.hidden_size = hidden_size
         self.output_size = output_size
         self.d_model = 768
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
-        # output: [batch_size, sequence_length, hidden_size]
+        # output: [batch_size, seq_length, d_model]
         # self.linear = nn.Linear(self.d_model * self.seq_len, self.output_size)
-        self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=output_size, batch_first=True, bidirectional=bidirec)
+        self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec)
+        # [batch_size, seq_len, hidden_size]
+        self.linear = nn.Linear(self.hidden_size * self.seq_len, self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, inputs, mask):
@@ -59,7 +62,7 @@ class RecBert(nn.Module):
         bert_output = bert_feature[11]
         batch_size = bert_feature[11].shape[0]
         # context = self.linear(bert_output.view(batch_size, -1))
-        context, _ = self.lstm(bert_output)  # N * seq_len * output_size
-        context = context[:, -1, :]
-        outputs = self.softmax(context)
+        context, _ = self.lstm(bert_output)  # N * seq_len * hidden_size
+        context = context.view(context.shape[0], -1)
+        outputs = self.softmax(self.linear(context)) # N * output_size
         return outputs

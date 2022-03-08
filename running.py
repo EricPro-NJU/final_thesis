@@ -58,7 +58,7 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="line
         model = SimpleBert(512, 2).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "lstm":
-        model = RecBert(512, 2, bidirec).to(device)
+        model = RecBert(512, 1024, 2, bidirec).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
     else:
         model = SimpleBert(512, 2).to(device)
@@ -151,7 +151,7 @@ def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bid
         model = SimpleBert(512, 2).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "lstm":
-        model = RecBert(512, 2, bidirec).to(device)
+        model = RecBert(512, 1024, 2, bidirec).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
     else:
         model = SimpleBert(512, 2).to(device)
