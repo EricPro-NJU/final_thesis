@@ -59,7 +59,7 @@ class RecBert(nn.Module):
         bert_output = bert_feature[11]
         batch_size = bert_feature[11].shape[0]
         # context = self.linear(bert_output.view(batch_size, -1))
-        context = self.lstm(bert_output)  # N * seq_len * output_size
-        context = context[:-1:]
+        context, _ = self.lstm(bert_output)  # N * seq_len * output_size
+        context = context[:, -1, :]
         outputs = self.softmax(context)
         return outputs
