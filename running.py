@@ -37,7 +37,17 @@ class Log:
                                                                 time.strftime("%Y%m%d%H%M%S", time.localtime()))
 
 
-def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="linear", bidirec=True):
+def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=None):
+    # TODO: implement further_pretraining
+    # datasets should be read using Dataset class into Dataloader
+    # use uncased BERT pretraining model to further pretrain the model
+    # set checkpoint each epoch trained
+    # finally save the "BertModel"(model.bert) state_dict to local files, this could be read in fine_tuning
+    pass
+
+
+def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,
+                further_pretrained=None, state_path=None):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -47,8 +57,12 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="line
     train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
     train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
     train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
-    trainloader = DataLoader(IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
-                             batch_size=batch_size, shuffle=True)
+    if datasets == "IMDB":
+        trainloader = DataLoader(
+            IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
+            batch_size=batch_size, shuffle=True)
+    else:
+        raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(trainloader)
     lg.log("Index Training Data Done.")
 
@@ -79,7 +93,11 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="line
         model.load_state_dict(init_state['state_dict'])
         optimizer.load_state_dict(init_state['optimizer'])
         init_epoch = init_state['epoch']
-        lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch, init_epoch+1))
+        lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
+                                                                                                    init_epoch + 1))
+    elif further_pretrained:
+        model.load_state_dict(torch.load(further_pretrained))
+        lg.log("Read further_pretrained model from file.")
     lg.log("Model Config Done.")
 
     # fine tuning BERT
@@ -130,7 +148,7 @@ def fine_tuning_IMDB(task_name, state_path=None, batch_size=16, model_name="line
     lg.writelog()
 
 
-def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bidirec=True):
+def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load testing data and indexing texts
@@ -140,8 +158,11 @@ def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bid
     test_index_file = "/root/autodl-nas/IMDBtest_index.txt"
     test_mask_file = "/root/autodl-nas/IMDBtest_mask.txt"
     test_label_file = "/root/autodl-nas/IMDBtest_label.txt"
-    testloader = DataLoader(IMDBDataSet(None, test_token_file, test_index_file, test_mask_file, test_label_file),
-                            batch_size=batch_size, shuffle=True)
+    if datasets == "IMDB":
+        testloader = DataLoader(IMDBDataSet(None, test_token_file, test_index_file, test_mask_file, test_label_file),
+                                batch_size=batch_size, shuffle=True)
+    else:
+        raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(testloader)
     lg.log("Index Testing Data Done.")
 
@@ -195,6 +216,6 @@ def evaluate_IMDB(task_name, model_path, batch_size=16, model_name="linear", bid
 if __name__ == "__main__":
     # this is a test of pushing codes from gpu server
     task_name = "IMDB_BERT_LSTM_FiT"
-    fine_tuning_IMDB(task_name, model_name="lstm")
+    fine_tuning(task_name, model_name="lstm", datasets="IMDB")
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate_IMDB(task_name, model_path, model_name="lstm")
+    evaluate(task_name, model_path, model_name="lstm", datasets="IMDB")
