@@ -24,7 +24,7 @@ class SimpleLSTM(nn.Module):
         self.linear = nn.Linear(self.hidden_size * self.seq_len, self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, inputs):
+    def forward(self, inputs, mask=torch.randn([1,1,1])):
         '''
         :param inputs: N * seq_len
         -> embedding: N * seq_len * emb_size
