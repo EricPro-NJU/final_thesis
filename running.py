@@ -316,6 +316,6 @@ if __name__ == "__main__":
     # this is a test of pushing codes from gpu server
     task_name = "IMDB_SP_LSTM_FiT"
     # fine_tuning(task_name, model_name="lstm", datasets="IMDB", bidirec=False)
-    basis_training(task_name)
+    # basis_training(task_name)
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate(task_name, model_path, model_name="lstm", datasets="IMDB", bidirec=False)
+    evaluate(task_name, model_path, model_name="sp_lstm", datasets="IMDB", bidirec=False)
