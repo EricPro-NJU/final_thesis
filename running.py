@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+import torch.optim as optim
 import time
 from pytorch_pretrained_bert import BertAdam
 from datasets import IMDBDataSet
@@ -48,18 +49,109 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
     raise NotImplementedError("Ask Eric to implement func further_pretraining")
 
 
+def basis_training(task_name, datasets="IMDB", batch_size=16, model_name="sp_lstm", bidirec=True, state_path=None):
+    torch.cuda.empty_cache()
+    lg = Log(task_name)
+    # load training data and indexing texts
+    lg.log("Indexing Training Data......")
+
+    if datasets == "IMDB":
+        train_file = "/root/autodl-nas/IMDBtrain.csv"
+        train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
+        train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
+        train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
+        train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
+        trainloader = DataLoader(
+            IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
+            batch_size=batch_size, shuffle=True)
+    else:
+        raise ValueError("No such dataset called {}".format(datasets))
+    t_batch = len(trainloader)
+    lg.log("Index Training Data Done.")
+
+    # prepare model and set hyper params
+    lg.log("Model Config......")
+    if model_name == "sp_lstm":
+        model = SimpleLSTM(512, 1024, 2, bidirec=bidirec).to(device)
+        lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
+    else:
+        raise ValueError("No such model named {}.".format(model_name))
+    model.train()
+
+    init_epoch = 0
+    t_epoch = 4
+    lr = 1e-4
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    if state_path is not None:
+        init_state = torch.load(state_path)
+        model.load_state_dict(init_state['state_dict'])
+        optimizer.load_state_dict(init_state['optimizer'])
+        init_epoch = init_state['epoch']
+        lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
+                                                                                                    init_epoch + 1))
+    lg.log("Model Config Done.")
+
+    # training
+    lg.log("Start Training.")
+    start_time = time.time()
+    last_time = start_time
+    for epoch in range(init_epoch, t_epoch):
+        batch_num = 0
+        total_loss = 0.0
+        for inputs, mask, label in trainloader:
+            inputs = inputs.to(device)
+            label = label.to(device)
+            output = model(inputs)
+            # N * output_size (after softmax, represent probability)  eg. N * 2
+            loss = criterion(output, label)
+            if (batch_num + 1) % 50 == 0:
+                lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
+                                                                        loss.item()))
+            total_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            batch_num += 1
+
+        this_time = time.time()
+        lg.log(
+            "epoch {}/{}, training done. Average loss = {:.6f}, Time Elapse this epoch : {}".format(epoch + 1, t_epoch,
+                                                                                                    total_loss / t_batch,
+                                                                                                    time.strftime(
+                                                                                                        "%H:%M:%S",
+                                                                                                        time.gmtime(
+                                                                                                            this_time - last_time))))
+        cur_state = {
+            "epoch": epoch,
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict()
+        }
+        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        lg.log("epoch {}/{}, model checkpoint saved.".format(epoch + 1, t_epoch))
+        last_time = time.time()
+
+    lg.log("Saving Model......")
+    torch.save(model.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
+    lg.log("Model saved.")
+    final_time = time.time()
+    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))))
+    lg.writelog()
+
+
 def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,
                 further_pretrained=None, state_path=None):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
     lg.log("Indexing Training Data......")
-    train_file = "/root/autodl-nas/IMDBtrain.csv"
-    train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
-    train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
-    train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
-    train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
+
     if datasets == "IMDB":
+        train_file = "/root/autodl-nas/IMDBtrain.csv"
+        train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
+        train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
+        train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
+        train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
         trainloader = DataLoader(
             IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
             batch_size=batch_size, shuffle=True)
@@ -155,12 +247,13 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
     lg = Log(task_name)
     # load testing data and indexing texts
     lg.log("Indexing Testing Data......")
-    test_file = "/root/autodl-nas/IMDBtest.csv"
-    test_token_file = "/root/autodl-nas/IMDBtest_token.txt"
-    test_index_file = "/root/autodl-nas/IMDBtest_index.txt"
-    test_mask_file = "/root/autodl-nas/IMDBtest_mask.txt"
-    test_label_file = "/root/autodl-nas/IMDBtest_label.txt"
+
     if datasets == "IMDB":
+        test_file = "/root/autodl-nas/IMDBtest.csv"
+        test_token_file = "/root/autodl-nas/IMDBtest_token.txt"
+        test_index_file = "/root/autodl-nas/IMDBtest_index.txt"
+        test_mask_file = "/root/autodl-nas/IMDBtest_mask.txt"
+        test_label_file = "/root/autodl-nas/IMDBtest_label.txt"
         testloader = DataLoader(IMDBDataSet(None, test_token_file, test_index_file, test_mask_file, test_label_file),
                                 batch_size=batch_size, shuffle=True)
     else:
@@ -176,6 +269,10 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
     elif model_name == "lstm":
         model = RecBert(512, 1024, 2, bidirec).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
+    elif model_name == "sp_lstm":
+        model = SimpleLSTM(512, 1024, 2, bidirec=bidirec).to(device)
+        lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
+
     else:
         model = SimpleBert(512, 2).to(device)
         lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
@@ -217,7 +314,8 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
 
 if __name__ == "__main__":
     # this is a test of pushing codes from gpu server
-    task_name = "IMDB_BERT_LSTM_FiT"
-    fine_tuning(task_name, model_name="lstm", datasets="IMDB")
+    task_name = "IMDB_SP_LSTM_FiT"
+    # fine_tuning(task_name, model_name="lstm", datasets="IMDB", bidirec=False)
+    basis_training(task_name)
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate(task_name, model_path, model_name="lstm", datasets="IMDB")
+    evaluate(task_name, model_path, model_name="lstm", datasets="IMDB", bidirec=False)
