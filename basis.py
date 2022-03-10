@@ -4,16 +4,20 @@ import torch.nn.functional as F
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 uncased_bert_vocab_size = 30522
+uncased_bert_emb_size = 768
+
 
 class SimpleLSTM(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, vocab_size=uncased_bert_vocab_size, bidirec=True):
+    def __init__(self, seq_len, hidden_size, output_size, vocab_size=uncased_bert_vocab_size,
+                 emb_size=uncased_bert_emb_size, bidirec=True):
         super(SimpleLSTM, self).__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size * 2 if bidirec else hidden_size
         self.output_size = output_size
         self.vocab_size = vocab_size
+        self.emb_size = emb_size
         self.embedding = nn.Embedding(vocab_size, hidden_size)
-        self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
+        self.lstm = nn.LSTM(input_size=self.emb_size, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.1)
         # [batch_size, seq_len, hidden_size]
         self.layernorm = nn.LayerNorm(self.hidden_size * self.seq_len)
@@ -23,7 +27,7 @@ class SimpleLSTM(nn.Module):
     def forward(self, inputs):
         '''
         :param inputs: N * seq_len
-        -> embedding: N * seq_len * hidden_size
+        -> embedding: N * seq_len * emb_size
         -> lstm: N * seq_len * hidden_size
         -> linear: N * output_size
         :return: N * output_size
