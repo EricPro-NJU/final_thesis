@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import torch.nn.functional as F
 from pytorch_pretrained_bert import BertTokenizer
 import random
@@ -117,7 +117,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     return token_list, index_list, mask_list, label_list
 
 
-def index_corpus(corpus_path, implemented=False):
+def index_corpus(corpus_path):
     # TODO: index corpus for further pretraining
     # the final indexes should include:
     #   1. input idx with format: [CLS] sentence A [SEP] sentence B [SEP] ([PAD]+) (with words masked)
@@ -126,8 +126,8 @@ def index_corpus(corpus_path, implemented=False):
     #   4. masked lm label with format: -1 x x x ... x -1 x x x ... x -1 -1 -1 ... (-1 for [CLS] [SEP] [PAD])
     #           (without words masked, the original index)
     #   5. next sentence label: 0 or 1, 0 for continuous sentences, 1 for random sentences.
-    if not implemented:
-        raise NotImplementedError("Ask Eric to implement this part in func index_corpus")
+
+    raise NotImplementedError("Ask Eric to implement this part in func index_corpus")
     inputs = []
     token_type = []
     attn_mask = []

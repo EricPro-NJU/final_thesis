@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import time
 from pytorch_pretrained_bert import BertAdam
 from datasets import IMDBDataSet
 from bert import SimpleBert, RecBert
+from transformer import TransformerEncoder
+from basis import SimpleLSTM
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -43,7 +45,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
     # use uncased BERT pretraining model to further pretrain the model
     # set checkpoint each epoch trained
     # finally save the "BertModel"(model.bert) state_dict to local files, this could be read in fine_tuning
-    pass
+    raise NotImplementedError("Ask Eric to implement func further_pretraining")
 
 
 def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,

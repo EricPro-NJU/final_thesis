@@ -45,8 +45,9 @@ class RecBert(nn.Module):
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # output: [batch_size, seq_length, d_model]
         # self.linear = nn.Linear(self.d_model * self.seq_len, self.output_size)
-        self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec)
+        self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec, dropout=0.1)
         # [batch_size, seq_len, hidden_size]
+        self.layernorm = nn.LayerNorm(self.hidden_size * self.seq_len)
         self.linear = nn.Linear(self.hidden_size * self.seq_len, self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
@@ -60,10 +61,9 @@ class RecBert(nn.Module):
         '''
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
         bert_output = bert_feature[11]
-        batch_size = bert_feature[11].shape[0]
         # context = self.linear(bert_output.view(batch_size, -1))
         context, _ = self.lstm(bert_output)  # N * seq_len * hidden_size
         batch_size = context.shape[0]
         context = context.reshape(batch_size, self.seq_len * self.hidden_size)
-        outputs = self.softmax(self.linear(context)) # N * output_size
+        outputs = self.softmax(self.linear(self.layernorm(context))) # N * output_size
         return outputs
