@@ -16,7 +16,7 @@ class SimpleLSTM(nn.Module):
         self.output_size = output_size
         self.vocab_size = vocab_size
         self.emb_size = emb_size
-        self.embedding = nn.Embedding(vocab_size, hidden_size)
+        self.embedding = nn.Embedding(vocab_size, emb_size)
         self.lstm = nn.LSTM(input_size=self.emb_size, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.1)
         # [batch_size, seq_len, hidden_size]
