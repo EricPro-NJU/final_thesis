@@ -117,23 +117,148 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     return token_list, index_list, mask_list, label_list
 
 
-def index_corpus(corpus_path):
-    # TODO: index corpus for further pretraining
-    # the final indexes should include:
+def separate_corpus(corpus_path, save_to=None):
+    '''
+    separate the corpus into two categories: continuous sentences, randoms sentences
+    make sure the numbers of items in both lists are the same
+    IMPORTANT: items in token list format!
+    :param corpus_path:
+    :return: two lists. list format: token_for_sentence_1, token_for_sentence_2, continuous or not (0 for continuous sentences)
+    '''
+    corpus_list0 = []  # continuous
+    corpus_list1 = []  # random
+    cache = None
+    random_cache = None
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    with open(corpus_path, "r", encoding="UTF-8-sig") as fp:
+        linereader = fp.readlines()
+        for line in linereader:
+            line = line.strip()
+            if line != "":
+                tokens = tokenizer.tokenize(line)
+                if cache is None:
+                    cache = tokens
+                else:
+                    corpus_list0.append([cache, tokens, 0])
+                    cache = None
+            else:
+                if cache is not None:
+                    if random_cache is not None:
+                        corpus_list1.append([cache, random_cache, 1])
+                        cache = None
+                        random_cache = None
+                    else:
+                        random_cache = cache
+                        cache = None
+    len0 = len(corpus_list0)
+    len1 = len(corpus_list1)
+    while len0 > len1:
+        a = random.randint(0, len0-1)
+        b = random.randint(0, len0-1)
+        if a == b:
+            item = corpus_list0[a]
+            temp = item[0]
+            item[0] = item[1]
+            item[1] = temp
+            item[2] = 1
+            del corpus_list0[a]
+            corpus_list1.append(item)
+            len0 -= 1
+            len1 += 1
+        else:
+            itema = corpus_list0[a]
+            itemb = corpus_list0[b]
+            temp = itema[1]
+            itema[1] = itemb[1]
+            itemb[1] = temp
+            itema[2] = 1
+            itemb[2] = 1
+            del corpus_list0[a]
+            del corpus_list0[b]
+            corpus_list1.append(itema)
+            corpus_list1.append(itemb)
+            len0 -= 2
+            len1 += 2
+    if save_to is not None:
+        with open(save_to, "w", encoding="UTF-8")as fp:
+            for item in corpus_list0:
+                fp.write("{}\n".format(item))
+            for item in corpus_list1:
+                fp.write("{}\n".format(item))
+    return corpus_list0, corpus_list1
+
+
+def index_corpus(corpus_path, tokens_path):
+    '''
+    :param corpus_path:
+    :param tokens_path:
+    :return: # the final indexes should include:
     #   1. input idx with format: [CLS] sentence A [SEP] sentence B [SEP] ([PAD]+) (with words masked)
     #   2. token type idx with format: 0 0 0 ... 0 1 1 1 ... (0 for anything before first [SEP])
     #   3. attention mask idx with format: 1 1 1 ... 1 0 0 0 ... (0 for [PAD])
-    #   4. masked lm label with format: -1 x x x ... x -1 x x x ... x -1 -1 -1 ... (-1 for [CLS] [SEP] [PAD])
-    #           (without words masked, the original index)
+    #   4. masked lm label with format: second return value of random_words, adding -1 to [PAD],[CLS],[SEP]
     #   5. next sentence label: 0 or 1, 0 for continuous sentences, 1 for random sentences.
+    # sequence length is limited to 509+3
+    '''
 
-    raise NotImplementedError("Ask Eric to implement this part in func index_corpus")
     inputs = []
     token_type = []
     attn_mask = []
     masked_lm = []
     next_sentence = []
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    if corpus_path is not None:
+        list0, list1 = separate_corpus(corpus_path, tokens_path)
+        tokens_list = list0 + list1
+    else:
+        if tokens_path is None:
+            raise ValueError("Please assign corpus file path when calling this function")
+        tokens_list = []
+        with open(tokens_path, "r", encoding="UTF-8") as fp:
+            lines = fp.readlines()
+            for line in lines:
+                tokens_list.append(eval(line))
+
+    random.shuffle(tokens_list)
+    for item in tokens_list:
+        size0 = len(item[0])
+        size1 = len(item[1])
+        if size0 + size1 > 509:
+            if size0 <= size1:
+                if size0 <= 254:
+                    size1 = 509 - size0
+                    item[1] = item[1][0:size1]
+                else:
+                    size0 = 254
+                    size1 = 255
+                    item[0] = item[0][-254:]
+                    item[1] = item[1][0:255]
+            else:
+                if size1 <= 254:
+                    size0 = 509 - size1
+                    item[0] = item[0][-size0:]
+                else:
+                    size1 = 254
+                    size0 = 255
+                    item[0] = item[0][-255:]
+                    item[1] = item[1][0:254]
+        total_size = size0 + size1 + 3
+        pad_size = 512 - total_size
+        next_sentence.append(item[2])
+        tt_item = [0] * (size0 + 1) + [1] * (512 - size0 - 1)
+        token_type.append(tt_item)
+        att_item = [1] * total_size + [0] * pad_size
+        attn_mask.append(att_item)
+        output_token0, output_label0 = random_word(item[0], tokenizer)
+        output_token1, output_label1 = random_word(item[1], tokenizer)
+        input_item = ["[CLS]"] + output_token0 + ["[SEP]"] + output_token1 + ["[SEP]"] + ["[PAD]"] * pad_size
+        lm_item = [-1] + output_label0 + [-1] + output_label1 + [-1] * (pad_size + 1)
+        index_item = tokenizer.convert_tokens_to_ids(input_item)
+        inputs.append(index_item)
+        masked_lm.append(lm_item)
     return inputs, token_type, attn_mask, masked_lm, next_sentence
+
+
 
 
 def label_logits(labels, group_num):
@@ -184,18 +309,14 @@ class IMDBDataSet(Dataset):
 
 
 class IMDBCorpus(Dataset):
-    def __init__(self, src_file):
+    def __init__(self, src_file, token_file):
         super(IMDBCorpus, self).__init__()
-        if src_file is not None:
-            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file)
-            self.input_idx = torch.LongTensor(inputs)
-            self.token_type = torch.LongTensor(tokentype)
-            self.attn_mask = torch.LongTensor(attn)
-            self.masked_lm = torch.LongTensor(masklm)
-            self.next_sentence = torch.LongTensor(nextsen)
-        else:
-            # TODO: directly read from cache file
-            raise NotImplementedError("Ask Eric to implement this part in class IMDBCorpus.")
+        inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file)
+        self.input_idx = torch.LongTensor(inputs)
+        self.token_type = torch.LongTensor(tokentype)
+        self.attn_mask = torch.LongTensor(attn)
+        self.masked_lm = torch.LongTensor(masklm)
+        self.next_sentence = torch.LongTensor(nextsen)
 
     def __len__(self):
         return self.input_idx.shape[0]
@@ -204,4 +325,19 @@ class IMDBCorpus(Dataset):
         return self.input_idx[idx], self.token_type[idx], self.attn_mask[idx], self.masked_lm[idx], self.next_sentence[idx]
 
 
+
+if __name__ == "__main__":
+    '''
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    sentence = "Behold! the abyss had come. Let the flame of redemption rage!"
+    tokens = tokenizer.tokenize(sentence)
+    print(tokens)
+    output_tokens, output_label = random_word(tokens, tokenizer)
+    print(output_tokens)
+    print(output_label)
+    '''
+    corpus_path = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_small.txt"
+    save_to = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_tokenized_small.txt"
+    list0, list1 = separate_corpus(corpus_path, save_to)
+    print(len(list0), len(list1))
 
