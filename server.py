@@ -6,10 +6,10 @@ token = "cabb7bd0508a"
 def send_message(title, name, content, token=token):
     resp = requests.post("https://www.autodl.com/api/v1/wechat/message/push",
                          json={
-                             "token": "token",
-                             "title": "title",
-                             "name": "name",
-                             "content": "content"
+                             "token": token,
+                             "title": title,
+                             "name": name,
+                             "content": content
                          })
     print(resp.content.decode())
 
