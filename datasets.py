@@ -237,7 +237,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                     max_size = eval(line.strip())
                     print("read max_size: {}".format(max_size))
                 tokens_list.append(eval(line.strip()))
-                if (i + 1) % 2000 == 0:
+                if (i + 1) % 10000 == 0:
                     print("Read data {} / {}".format(i+1, file_len))
     if max_size > 509:
         max_size = 509
@@ -283,7 +283,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         inputs.append(index_item)
         assert len(masked_lm) == max_size
         masked_lm.append(lm_item)
-        if (i + 1) % 500 == 0:
+        if (i + 1) % 1000 == 0:
             print("Processed Data {} / {}".format(i+1, size))
     if save_to is not None:
         with open(save_to, "w", encoding="UTF-8") as fp:
