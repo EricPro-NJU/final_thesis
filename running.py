@@ -69,7 +69,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
 
     # prepare further_pretraining model
     lg.log("Model Config......")
-    model = BertForPreTraining.from_pretrained("bert-base-uncased")
+    model = BertForPreTraining.from_pretrained("bert-base-uncased").to(device)
     lg.log("BertForPreTraining loaded.")
     init_epoch = 0
     t_epoch = 4
