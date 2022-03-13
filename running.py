@@ -4,8 +4,8 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.optim as optim
 import time
-from pytorch_pretrained_bert import BertAdam
-from datasets import IMDBDataSet
+from pytorch_pretrained_bert import BertAdam, BertForPreTraining
+from datasets import IMDBDataSet, IMDBCorpus
 from bert import SimpleBert, RecBert
 from transformer import TransformerEncoder
 from basis import SimpleLSTM
@@ -41,12 +41,90 @@ class Log:
 
 
 def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=None):
-    # TODO: implement further_pretraining
     # datasets should be read using Dataset class into Dataloader
     # use uncased BERT pretraining model to further pretrain the model
     # set checkpoint each epoch trained
     # finally save the "BertModel"(model.bert) state_dict to local files, this could be read in fine_tuning
-    raise NotImplementedError("Ask Eric to implement func further_pretraining")
+    torch.cuda.empty_cache()
+    lg = Log(task_name)
+    # load training data and indexing texts
+    lg.log("Indexing Training Data......")
+
+    if datasets == "IMDB":
+        corpus_file = "/root/autodl-nas/IMDB_corpus.txt"
+        corpus_token_file = "/root/autodl-nas/IMDB_corpus_tokenized.txt"
+        corpus_index_file = "/root/autodl-nas/IMDB_corpus_indexed.txt"
+        dataloader = DataLoader(IMDBCorpus(corpus_file, corpus_token_file, corpus_index_file), batch_size=batch_size,
+                                shuffle=True)
+    else:
+        raise ValueError("No such dataset called {}".format(datasets))
+    t_batch = len(dataloader)
+    lg.log("Index Training Data Done.")
+
+    # prepare further_pretraining model
+    lg.log("Model Config......")
+    model = BertForPreTraining.from_pretrained("bert-base-uncased")
+    init_epoch = 0
+    t_epoch = 4
+    lr = 2e-5
+    warmup = 0.1
+    t_total = 1e5
+    optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
+    if state_path is not None:
+        init_state = torch.load(state_path)
+        model.load_state_dict(init_state['state_dict'])
+        optimizer.load_state_dict(init_state['optimizer'])
+        init_epoch = init_state['epoch']
+        lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
+                                                                                                    init_epoch + 1))
+    lg.log("Model Config Done.")
+
+    # pretraining BERT
+    lg.log("Start PreTraining.")
+    start_time = time.time()
+    last_time = start_time
+    for epoch in range(init_epoch, t_epoch):
+        batch_num = 0
+        total_loss = 0.0
+        for inputs, ttype, mask, lm, nxtsen in dataloader:
+            inputs = inputs.to(device)
+            ttype = ttype.to(device)
+            mask = mask.to(device)
+            lm = lm.to(device)
+            nxtsen = nxtsen.to(device)
+            loss = model(inputs, ttype, mask, lm, nxtsen)
+            if (batch_num + 1) % 50 == 0:
+                lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
+                                                                        loss.item()))
+            total_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            batch_num += 1
+
+        this_time = time.time()
+        lg.log(
+            "epoch {}/{}, training done. Average loss = {:.6f}, Time Elapse this epoch : {}".format(epoch + 1, t_epoch,
+                                                                                                    total_loss / t_batch,
+                                                                                                    time.strftime(
+                                                                                                        "%H:%M:%S",
+                                                                                                        time.gmtime(
+                                                                                                            this_time - last_time))))
+        cur_state = {
+            "epoch": epoch,
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict()
+        }
+        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        lg.log("epoch {}/{}, model checkpoint saved.".format(epoch + 1, t_epoch))
+        last_time = time.time()
+
+    lg.log("Saving Pretraining Model......")
+    torch.save(model.bert.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
+    lg.log("Pretraining Model saved.")
+    final_time = time.time()
+    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))))
+    lg.writelog()
 
 
 def basis_training(task_name, datasets="IMDB", batch_size=16, model_name="sp_lstm", bidirec=True, state_path=None):
@@ -313,7 +391,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
 
 
 if __name__ == "__main__":
-    task_name = "IMDB_BERTLN_FiT"
-    fine_tuning(task_name, model_name="linear", datasets="IMDB", bidirec=True)
+    task_name = "IMDB_BERTRNN_FiT"
+    fine_tuning(task_name, model_name="lstm", datasets="IMDB")
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate(task_name, model_path, model_name="linear", datasets="IMDB", bidirec=True)
+    evaluate(task_name, model_path, model_name="lstm", datasets="IMDB")
