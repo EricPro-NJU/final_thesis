@@ -236,12 +236,13 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                 if max_size == -1:
                     max_size = eval(line.strip())
                     print("read max_size: {}".format(max_size))
+                    continue
                 tokens_list.append(eval(line.strip()))
                 if (i + 1) % 10000 == 0:
                     print("Read data {} / {}".format(i+1, file_len))
     if max_size > 509:
         max_size = 509
-    random.shuffle(tokens_list)
+    # random.shuffle(tokens_list)
     size = len(tokens_list)
     for i, item in enumerate(tokens_list):
         size0 = len(item[0])
