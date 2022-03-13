@@ -269,19 +269,19 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         pad_size = max_size + 3 - total_size
         next_sentence.append(item[2])
         tt_item = [0] * (size0 + 1) + [1] * (max_size + 3 - size0 - 1)
-        assert len(tt_item) == max_size
+        assert len(tt_item) == (max_size + 3)
         token_type.append(tt_item)
         att_item = [1] * total_size + [0] * pad_size
-        assert len(att_item) == max_size
+        assert len(att_item) == (max_size + 3)
         attn_mask.append(att_item)
         output_token0, output_label0 = random_word(item[0], tokenizer)
         output_token1, output_label1 = random_word(item[1], tokenizer)
         input_item = ["[CLS]"] + output_token0 + ["[SEP]"] + output_token1 + ["[SEP]"] + ["[PAD]"] * pad_size
         lm_item = [-1] + output_label0 + [-1] + output_label1 + [-1] * (pad_size + 1)
         index_item = tokenizer.convert_tokens_to_ids(input_item)
-        assert len(index_item) == max_size
+        assert len(index_item) == (max_size + 3)
         inputs.append(index_item)
-        assert len(masked_lm) == max_size
+        assert len(masked_lm) == (max_size + 3)
         masked_lm.append(lm_item)
         if (i + 1) % 1000 == 0:
             print("Processed Data {} / {}".format(i+1, size))
