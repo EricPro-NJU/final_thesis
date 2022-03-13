@@ -39,7 +39,7 @@ class RecBert(nn.Module):
     def __init__(self, seq_len, hidden_size, output_size, bidirec=True):
         super(RecBert, self).__init__()
         self.seq_len = seq_len
-        self.hidden_size = hidden_size * 2 if bidirec else hidden_size
+        self.hidden_size = hidden_size
         self.output_size = output_size
         self.d_model = 768
         self.bert = BertModel.from_pretrained('bert-base-uncased')
