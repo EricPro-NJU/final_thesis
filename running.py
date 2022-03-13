@@ -398,13 +398,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
 
 
 if __name__ == "__main__":
-    # task_name = "IMDB_FtP"
-    # further_pretraining(task_name, datasets="IMDB")
-    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    print("prepare model......")
-    model = SimpleBert(512, 2).to(device)
-    print("reading pretrained model......")
-    model.bert.load_state_dict(torch.load(further_pretrained))
-    print("done.")
+    task_name = "IMDB_FtP"
+    further_pretraining(task_name, datasets="IMDB")
 
 

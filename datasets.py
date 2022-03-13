@@ -358,7 +358,6 @@ class IMDBCorpus(Dataset):
                 lines = fp.readlines()
                 file_size = len(lines)
                 print("{} data to be read.".format(file_size))
-                print("testing mode, only read 1000 data.")
                 for i, line in enumerate(lines):
                     temp = eval(line.strip())
                     inputs.append(temp[0])
@@ -366,8 +365,6 @@ class IMDBCorpus(Dataset):
                     attn.append(temp[2])
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
-                    if (i + 1) >= 1000:
-                        break
                     if (i + 1) % 20000 == 0:
                         print("Reading data {} / {}".format(i+1, file_size))
         self.input_idx = torch.LongTensor(inputs)
