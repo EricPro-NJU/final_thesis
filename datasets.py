@@ -281,7 +281,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         index_item = tokenizer.convert_tokens_to_ids(input_item)
         assert len(index_item) == (max_size + 3)
         inputs.append(index_item)
-        assert len(masked_lm) == (max_size + 3)
+        assert len(lm_item) == (max_size + 3)
         masked_lm.append(lm_item)
         if (i + 1) % 1000 == 0:
             print("Processed Data {} / {}".format(i+1, size))
