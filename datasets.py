@@ -360,9 +360,9 @@ if __name__ == "__main__":
     print(output_tokens)
     print(output_label)
     '''
-    corpus_path = "/root/autodl-nas/IMDB_corpus.txt"
-    token_path = "/root/autodl-nas/IMDB_corpus_tokenized.txt"
-    index_path = "/root/autodl-nas/IMDB_corpus_indexed.txt"
+    corpus_path = "/root/autodl-tmp/IMDB_corpus.txt"
+    token_path = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
+    index_path = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
     corpus = IMDBCorpus(corpus_path, token_path, index_path)
     print(corpus.__len__())
     for i in range(10):

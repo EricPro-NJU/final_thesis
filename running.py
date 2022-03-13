@@ -57,9 +57,9 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
     lg.log("Indexing Training Data......")
 
     if datasets == "IMDB":
-        corpus_file = "/root/autodl-nas/IMDB_corpus.txt"
-        corpus_token_file = "/root/autodl-nas/IMDB_corpus_tokenized.txt"
-        corpus_index_file = "/root/autodl-nas/IMDB_corpus_indexed.txt"
+        corpus_file = "/root/autodl-tmp/IMDB_corpus.txt"
+        corpus_token_file = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
+        corpus_index_file = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
         dataloader = DataLoader(IMDBCorpus(None, None, corpus_index_file), batch_size=batch_size,
                                 shuffle=True)
     else:
@@ -141,11 +141,11 @@ def basis_training(task_name, datasets="IMDB", batch_size=16, model_name="sp_lst
     lg.log("Indexing Training Data......")
 
     if datasets == "IMDB":
-        train_file = "/root/autodl-nas/IMDBtrain.csv"
-        train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
-        train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
-        train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
-        train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
+        train_file = "/root/autodl-tmp/IMDBtrain.csv"
+        train_token_file = "/root/autodl-tmp/IMDBtrain_token.txt"
+        train_index_file = "/root/autodl-tmp/IMDBtrain_index.txt"
+        train_mask_file = "/root/autodl-tmp/IMDBtrain_mask.txt"
+        train_label_file = "/root/autodl-tmp/IMDBtrain_label.txt"
         trainloader = DataLoader(
             IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
             batch_size=batch_size, shuffle=True)
@@ -232,11 +232,11 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
     lg.log("Indexing Training Data......")
 
     if datasets == "IMDB":
-        train_file = "/root/autodl-nas/IMDBtrain.csv"
-        train_token_file = "/root/autodl-nas/IMDBtrain_token.txt"
-        train_index_file = "/root/autodl-nas/IMDBtrain_index.txt"
-        train_mask_file = "/root/autodl-nas/IMDBtrain_mask.txt"
-        train_label_file = "/root/autodl-nas/IMDBtrain_label.txt"
+        train_file = "/root/autodl-tmp/IMDBtrain.csv"
+        train_token_file = "/root/autodl-tmp/IMDBtrain_token.txt"
+        train_index_file = "/root/autodl-tmp/IMDBtrain_index.txt"
+        train_mask_file = "/root/autodl-tmp/IMDBtrain_mask.txt"
+        train_label_file = "/root/autodl-tmp/IMDBtrain_label.txt"
         trainloader = DataLoader(
             IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
             batch_size=batch_size, shuffle=True)
@@ -334,11 +334,11 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
     lg.log("Indexing Testing Data......")
 
     if datasets == "IMDB":
-        test_file = "/root/autodl-nas/IMDBtest.csv"
-        test_token_file = "/root/autodl-nas/IMDBtest_token.txt"
-        test_index_file = "/root/autodl-nas/IMDBtest_index.txt"
-        test_mask_file = "/root/autodl-nas/IMDBtest_mask.txt"
-        test_label_file = "/root/autodl-nas/IMDBtest_label.txt"
+        test_file = "/root/autodl-tmp/IMDBtest.csv"
+        test_token_file = "/root/autodl-tmp/IMDBtest_token.txt"
+        test_index_file = "/root/autodl-tmp/IMDBtest_index.txt"
+        test_mask_file = "/root/autodl-tmp/IMDBtest_mask.txt"
+        test_label_file = "/root/autodl-tmp/IMDBtest_label.txt"
         testloader = DataLoader(IMDBDataSet(None, test_token_file, test_index_file, test_mask_file, test_label_file),
                                 batch_size=batch_size, shuffle=True)
     else:
