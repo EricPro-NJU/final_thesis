@@ -126,11 +126,13 @@ def separate_corpus(corpus_path, save_to=None):
     :param corpus_path:
     :return: two lists. list format: token_for_sentence_1, token_for_sentence_2, continuous or not (0 for continuous sentences)
     '''
+    print("separating corpus......")
     corpus_list0 = []  # continuous
     corpus_list1 = []  # random
     cache = None
     random_cache = None
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    max_size = 0
     with open(corpus_path, "r", encoding="UTF-8-sig") as fp:
         linereader = fp.readlines()
         for line in linereader:
@@ -141,11 +143,15 @@ def separate_corpus(corpus_path, save_to=None):
                     cache = tokens
                 else:
                     corpus_list0.append([cache, tokens, 0])
+                    size = len(cache) + len(tokens)
+                    max_size = max_size if max_size > size else size
                     cache = None
             else:
                 if cache is not None:
                     if random_cache is not None:
                         corpus_list1.append([cache, random_cache, 1])
+                        size = len(cache) + len(random_cache)
+                        max_size = max_size if max_size > size else size
                         cache = None
                         random_cache = None
                     else:
@@ -182,11 +188,13 @@ def separate_corpus(corpus_path, save_to=None):
             len1 += 2
     if save_to is not None:
         with open(save_to, "w", encoding="UTF-8")as fp:
+            fp.write("{}\n".format(max_size))
             for item in corpus_list0:
                 fp.write("{}\n".format(item))
             for item in corpus_list1:
                 fp.write("{}\n".format(item))
-    return corpus_list0, corpus_list1
+    print("Done, max token size is {}".format(max_size))
+    return corpus_list0, corpus_list1, max_size
 
 
 def index_corpus(corpus_path, tokens_path, save_to=None):
@@ -210,46 +218,50 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
     next_sentence = []
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     if corpus_path is not None:
-        list0, list1 = separate_corpus(corpus_path, tokens_path)
+        list0, list1, max_size = separate_corpus(corpus_path, tokens_path)
         tokens_list = list0 + list1
 
     else:
         if tokens_path is None:
             raise ValueError("Please assign corpus file path when calling this function")
         tokens_list = []
+        max_size = -1
         with open(tokens_path, "r", encoding="UTF-8") as fp:
             lines = fp.readlines()
             for line in lines:
-                tokens_list.append(eval(line))
-
+                if max_size == -1:
+                    max_size = eval(line.strip())
+                tokens_list.append(eval(line.strip()))
+    if max_size > 509:
+        max_size = 509
     random.shuffle(tokens_list)
     size = len(tokens_list)
     for item in tokens_list:
         size0 = len(item[0])
         size1 = len(item[1])
-        if size0 + size1 > 509:
+        if size0 + size1 > max_size:
             if size0 <= size1:
-                if size0 <= 254:
-                    size1 = 509 - size0
+                if size0 <= max_size//2:
+                    size1 = max_size - size0
                     item[1] = item[1][0:size1]
                 else:
-                    size0 = 254
-                    size1 = 255
-                    item[0] = item[0][-254:]
-                    item[1] = item[1][0:255]
+                    size0 = max_size//2
+                    size1 = max_size - size0
+                    item[0] = item[0][-size0:]
+                    item[1] = item[1][0:size1]
             else:
-                if size1 <= 254:
-                    size0 = 509 - size1
+                if size1 <= max_size//2:
+                    size0 = max_size - size1
                     item[0] = item[0][-size0:]
                 else:
-                    size1 = 254
-                    size0 = 255
-                    item[0] = item[0][-255:]
-                    item[1] = item[1][0:254]
+                    size1 = max_size//2
+                    size0 = max_size - size1
+                    item[0] = item[0][-size0:]
+                    item[1] = item[1][0:size1]
         total_size = size0 + size1 + 3
-        pad_size = 512 - total_size
+        pad_size = max_size + 2 - total_size
         next_sentence.append(item[2])
-        tt_item = [0] * (size0 + 1) + [1] * (512 - size0 - 1)
+        tt_item = [0] * (size0 + 1) + [1] * (max_size + 2 - size0 - 1)
         token_type.append(tt_item)
         att_item = [1] * total_size + [0] * pad_size
         attn_mask.append(att_item)
@@ -363,7 +375,4 @@ if __name__ == "__main__":
     corpus_path = "/root/autodl-tmp/IMDB_corpus.txt"
     token_path = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
     index_path = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
-    corpus = IMDBCorpus(corpus_path, token_path, index_path)
-    print(corpus.__len__())
-    for i in range(10):
-        print(corpus.__getitem__(i))
+    list0, list1, max_size = separate_corpus(corpus_path, token_path)
