@@ -158,8 +158,8 @@ def separate_corpus(corpus_path, save_to=None):
                     else:
                         random_cache = cache
                         cache = None
-            if (i + 1)%100==0:
-                print("Read data {} / {}".format(i+1, file_len))
+            if (i + 1) % 2000 == 0:
+                print("Read data {} / {}".format(i + 1, file_len))
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
     while len0 > len1:
@@ -245,20 +245,20 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         size1 = len(item[1])
         if size0 + size1 > max_size:
             if size0 <= size1:
-                if size0 <= max_size//2:
+                if size0 <= max_size // 2:
                     size1 = max_size - size0
                     item[1] = item[1][0:size1]
                 else:
-                    size0 = max_size//2
+                    size0 = max_size // 2
                     size1 = max_size - size0
                     item[0] = item[0][-size0:]
                     item[1] = item[1][0:size1]
             else:
-                if size1 <= max_size//2:
+                if size1 <= max_size // 2:
                     size0 = max_size - size1
                     item[0] = item[0][-size0:]
                 else:
-                    size1 = max_size//2
+                    size1 = max_size // 2
                     size0 = max_size - size1
                     item[0] = item[0][-size0:]
                     item[1] = item[1][0:size1]
