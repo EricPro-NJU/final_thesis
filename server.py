@@ -1,12 +1,9 @@
 import requests
 
-token = "cabb7bd0508a"
-
-
-def send_message(title, name, content, token=token):
+def send_message(title, name, content):
     resp = requests.post("https://www.autodl.com/api/v1/wechat/message/push",
                          json={
-                             "token": token,
+                             "token": "cabb7bd0508a",
                              "title": title,
                              "name": name,
                              "content": content
@@ -14,9 +11,9 @@ def send_message(title, name, content, token=token):
     print(resp.content.decode())
 
 
-def send_log_message(task_name, log_str, token=token):
+def send_log_message(task_name, log_str):
     title = "任务{}从AutoDL服务器发来消息".format(task_name)
-    send_message(title, task_name, log_str, token)
+    send_message(title, task_name, log_str)
 
 
 if __name__ == "__main__":

@@ -275,7 +275,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
         lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
                                                                                                     init_epoch + 1))
     elif further_pretrained:
-        model.load_state_dict(torch.load(further_pretrained))
+        model.bert.load_state_dict(torch.load(further_pretrained))
         lg.log("Read further_pretrained model from file.")
     lg.log("Model Config Done.")
 
@@ -398,5 +398,10 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
 
 
 if __name__ == "__main__":
-    task_name = "IMDB_FtP"
-    further_pretraining(task_name, datasets="IMDB")
+    # task_name = "IMDB_FtP"
+    # further_pretraining(task_name, datasets="IMDB")
+    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+    model = SimpleBert(512, 2).to(device)
+    model.bert.load_state_dict(torch.load(further_pretrained))
+
+
