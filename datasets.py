@@ -7,6 +7,7 @@ import random
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
 def random_word(tokens, tokenizer):
     """
     Masking some random tokens for Language Model task with probabilities as in the original BERT paper.
@@ -153,8 +154,8 @@ def separate_corpus(corpus_path, save_to=None):
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
     while len0 > len1:
-        a = random.randint(0, len0-1)
-        b = random.randint(0, len0-1)
+        a = random.randint(0, len0 - 1)
+        b = random.randint(0, len0 - 1)
         if a == b:
             item = corpus_list0[a]
             temp = item[0]
@@ -188,8 +189,9 @@ def separate_corpus(corpus_path, save_to=None):
     return corpus_list0, corpus_list1
 
 
-def index_corpus(corpus_path, tokens_path):
+def index_corpus(corpus_path, tokens_path, save_to=None):
     '''
+    :param save_to:
     :param corpus_path:
     :param tokens_path:
     :return: # the final indexes should include:
@@ -210,6 +212,7 @@ def index_corpus(corpus_path, tokens_path):
     if corpus_path is not None:
         list0, list1 = separate_corpus(corpus_path, tokens_path)
         tokens_list = list0 + list1
+
     else:
         if tokens_path is None:
             raise ValueError("Please assign corpus file path when calling this function")
@@ -220,6 +223,7 @@ def index_corpus(corpus_path, tokens_path):
                 tokens_list.append(eval(line))
 
     random.shuffle(tokens_list)
+    size = len(tokens_list)
     for item in tokens_list:
         size0 = len(item[0])
         size1 = len(item[1])
@@ -256,9 +260,13 @@ def index_corpus(corpus_path, tokens_path):
         index_item = tokenizer.convert_tokens_to_ids(input_item)
         inputs.append(index_item)
         masked_lm.append(lm_item)
+    if save_to is not None:
+        with open(save_to, "w", encoding="UTF-8") as fp:
+            for i in range(size):
+                temp = [inputs[i], token_type[i], attn_mask[i], masked_lm[i], next_sentence[i]]
+                fp.write("{}\n".format(temp))
+
     return inputs, token_type, attn_mask, masked_lm, next_sentence
-
-
 
 
 def label_logits(labels, group_num):
@@ -309,9 +317,25 @@ class IMDBDataSet(Dataset):
 
 
 class IMDBCorpus(Dataset):
-    def __init__(self, src_file, token_file):
+    def __init__(self, src_file, token_file=None, index_file=None):
         super(IMDBCorpus, self).__init__()
-        inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file)
+        if src_file is not None or token_file is not None:
+            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
+        else:
+            inputs = []
+            tokentype = []
+            attn = []
+            masklm = []
+            nextsen = []
+            with open(index_file, "r", encoding="UTF-8") as fp:
+                lines = fp.readlines()
+                for line in lines:
+                    temp = eval(line.strip())
+                    inputs.append(temp[0])
+                    tokentype.append(temp[1])
+                    attn.append(temp[2])
+                    masklm.append(temp[3])
+                    nextsen.append(temp[4])
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
@@ -322,8 +346,8 @@ class IMDBCorpus(Dataset):
         return self.input_idx.shape[0]
 
     def __getitem__(self, idx):
-        return self.input_idx[idx], self.token_type[idx], self.attn_mask[idx], self.masked_lm[idx], self.next_sentence[idx]
-
+        return self.input_idx[idx], self.token_type[idx], self.attn_mask[idx], self.masked_lm[idx], self.next_sentence[
+            idx]
 
 
 if __name__ == "__main__":
@@ -337,7 +361,9 @@ if __name__ == "__main__":
     print(output_label)
     '''
     corpus_path = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_small.txt"
-    save_to = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_tokenized_small.txt"
-    list0, list1 = separate_corpus(corpus_path, save_to)
-    print(len(list0), len(list1))
-
+    token_path = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_tokenized_small.txt"
+    index_path = "data/IMDB_data-20220302T115341Z-001/IMDB_data/IMDB_corpus_indexed_small.txt"
+    corpus = IMDBCorpus(None, None, index_path)
+    print(corpus.__len__())
+    for i in range(10):
+        print(corpus.__getitem__(i))

@@ -313,9 +313,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="
 
 
 if __name__ == "__main__":
-    # this is a test of pushing codes from gpu server
-    task_name = "IMDB_SP_LSTM_FiT"
-    # fine_tuning(task_name, model_name="lstm", datasets="IMDB", bidirec=False)
-    # basis_training(task_name)
+    task_name = "IMDB_BERTLN_FiT"
+    fine_tuning(task_name, model_name="linear", datasets="IMDB", bidirec=True)
     model_path = "/root/autodl-nas/checkpoint/{}.pb".format(task_name)
-    evaluate(task_name, model_path, model_name="sp_lstm", datasets="IMDB", bidirec=True)
+    evaluate(task_name, model_path, model_name="linear", datasets="IMDB", bidirec=True)
