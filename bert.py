@@ -64,8 +64,6 @@ class RecBert(nn.Module):
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
         bert_output = bert_feature[11]
         context, (hidden, cell) = self.lstm(bert_output)  # N * seq_len * hidden_size
-        print(hidden.shape)
         hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1)  # hidden state of the last layer [N, hidden*2]
-        print(hidden.shape)
         outputs = self.softmax(self.linear(hidden))  # N * output_size
         return outputs
