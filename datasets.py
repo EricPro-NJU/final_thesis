@@ -266,9 +266,9 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                     item[0] = item[0][-size0:]
                     item[1] = item[1][0:size1]
         total_size = size0 + size1 + 3
-        pad_size = max_size + 2 - total_size
+        pad_size = max_size + 3 - total_size
         next_sentence.append(item[2])
-        tt_item = [0] * (size0 + 1) + [1] * (max_size + 2 - size0 - 1)
+        tt_item = [0] * (size0 + 1) + [1] * (max_size + 3 - size0 - 1)
         assert len(tt_item) == max_size
         token_type.append(tt_item)
         att_item = [1] * total_size + [0] * pad_size
