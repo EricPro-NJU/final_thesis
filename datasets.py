@@ -348,6 +348,7 @@ class IMDBCorpus(Dataset):
         if src_file is not None or token_file is not None:
             inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
         else:
+            print("Reading data from cache file.")
             inputs = []
             tokentype = []
             attn = []
@@ -355,13 +356,16 @@ class IMDBCorpus(Dataset):
             nextsen = []
             with open(index_file, "r", encoding="UTF-8") as fp:
                 lines = fp.readlines()
-                for line in lines:
+                file_size = len(lines)
+                for i, line in enumerate(lines):
                     temp = eval(line.strip())
                     inputs.append(temp[0])
                     tokentype.append(temp[1])
                     attn.append(temp[2])
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
+                    if (i + 1) % 20000 == 0:
+                        print("Reading data {} / {}".format(i+1, file_size))
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
