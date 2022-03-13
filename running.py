@@ -60,7 +60,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
         corpus_file = "/root/autodl-nas/IMDB_corpus.txt"
         corpus_token_file = "/root/autodl-nas/IMDB_corpus_tokenized.txt"
         corpus_index_file = "/root/autodl-nas/IMDB_corpus_indexed.txt"
-        dataloader = DataLoader(IMDBCorpus(corpus_file, corpus_token_file, corpus_index_file), batch_size=batch_size,
+        dataloader = DataLoader(IMDBCorpus(None, None, corpus_index_file), batch_size=batch_size,
                                 shuffle=True)
     else:
         raise ValueError("No such dataset called {}".format(datasets))
