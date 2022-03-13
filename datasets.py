@@ -231,16 +231,19 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         max_size = -1
         with open(tokens_path, "r", encoding="UTF-8") as fp:
             lines = fp.readlines()
-            for line in lines:
+            file_len = len(lines)
+            for i, line in enumerate(lines):
                 if max_size == -1:
                     max_size = eval(line.strip())
                     print("read max_size: {}".format(max_size))
                 tokens_list.append(eval(line.strip()))
+                if (i + 1) % 2000 == 0:
+                    print("Read data {} / {}".format(i+1, file_len))
     if max_size > 509:
         max_size = 509
     random.shuffle(tokens_list)
     size = len(tokens_list)
-    for item in tokens_list:
+    for i, item in enumerate(tokens_list):
         size0 = len(item[0])
         size1 = len(item[1])
         if size0 + size1 > max_size:
@@ -266,16 +269,22 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         pad_size = max_size + 2 - total_size
         next_sentence.append(item[2])
         tt_item = [0] * (size0 + 1) + [1] * (max_size + 2 - size0 - 1)
+        assert len(tt_item) == max_size
         token_type.append(tt_item)
         att_item = [1] * total_size + [0] * pad_size
+        assert len(att_item) == max_size
         attn_mask.append(att_item)
         output_token0, output_label0 = random_word(item[0], tokenizer)
         output_token1, output_label1 = random_word(item[1], tokenizer)
         input_item = ["[CLS]"] + output_token0 + ["[SEP]"] + output_token1 + ["[SEP]"] + ["[PAD]"] * pad_size
         lm_item = [-1] + output_label0 + [-1] + output_label1 + [-1] * (pad_size + 1)
         index_item = tokenizer.convert_tokens_to_ids(input_item)
+        assert len(index_item) == max_size
         inputs.append(index_item)
+        assert len(masked_lm) == max_size
         masked_lm.append(lm_item)
+        if (i + 1) % 500 == 0:
+            print("Processed Data {} / {}".format(i+1, size))
     if save_to is not None:
         with open(save_to, "w", encoding="UTF-8") as fp:
             for i in range(size):
@@ -379,4 +388,4 @@ if __name__ == "__main__":
     corpus_path = "/root/autodl-tmp/IMDB_corpus.txt"
     token_path = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
     index_path = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
-    list0, list1, max_size = separate_corpus(corpus_path, token_path)
+    inputs, token_type, attn_mask, masked_lm, next_sentence = index_corpus(None, token_path, index_path)
