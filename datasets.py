@@ -135,7 +135,8 @@ def separate_corpus(corpus_path, save_to=None):
     max_size = 0
     with open(corpus_path, "r", encoding="UTF-8-sig") as fp:
         linereader = fp.readlines()
-        for line in linereader:
+        file_len = len(linereader)
+        for i, line in enumerate(linereader):
             line = line.strip()
             if line != "":
                 tokens = tokenizer.tokenize(line)
@@ -157,6 +158,8 @@ def separate_corpus(corpus_path, save_to=None):
                     else:
                         random_cache = cache
                         cache = None
+            if (i + 1)%100==0:
+                print("Read data {} / {}".format(i+1, file_len))
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
     while len0 > len1:
@@ -231,6 +234,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
             for line in lines:
                 if max_size == -1:
                     max_size = eval(line.strip())
+                    print("read max_size: {}".format(max_size))
                 tokens_list.append(eval(line.strip()))
     if max_size > 509:
         max_size = 509
