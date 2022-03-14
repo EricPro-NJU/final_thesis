@@ -82,7 +82,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
         optimizer.load_state_dict(init_state['optimizer'])
-        init_epoch = init_state['epoch']
+        init_epoch = init_state['epoch'] + 1
         lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
                                                                                                     init_epoch + 1))
     lg.log("Model Config Done.")
@@ -175,7 +175,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
         optimizer.load_state_dict(init_state['optimizer'])
-        init_epoch = init_state['epoch']
+        init_epoch = init_state['epoch'] + 1
         lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
                                                                                                     init_epoch + 1))
     lg.log("Model Config Done.")
