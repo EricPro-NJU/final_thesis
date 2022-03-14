@@ -32,7 +32,7 @@ class Log:
         if not mute:
             print(log_text)
         if message:
-            server.send_log_message(self.task_name, log_text)
+            server.send_log_message(self.task_name, text)
 
     def writelog(self):
         if self.log_num == 0:
