@@ -276,7 +276,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", 
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
         optimizer.load_state_dict(init_state['optimizer'])
-        init_epoch = init_state['epoch']
+        init_epoch = init_state['epoch'] + 1
         lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
                                                                                                     init_epoch + 1))
     elif further_pretrained:
