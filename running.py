@@ -116,7 +116,8 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
                                                                                                     time.strftime(
                                                                                                         "%H:%M:%S",
                                                                                                         time.gmtime(
-                                                                                                            this_time - last_time))), message=push_message)
+                                                                                                            this_time - last_time))),
+            message=push_message)
         cur_state = {
             "epoch": epoch,
             "state_dict": model.state_dict(),
@@ -130,7 +131,8 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     torch.save(model.bert.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
     lg.log("Pretraining Model saved.")
     final_time = time.time()
-    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))), message=push_message)
+    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))),
+           message=push_message)
     lg.writelog()
 
 
@@ -206,7 +208,8 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
                                                                                                     time.strftime(
                                                                                                         "%H:%M:%S",
                                                                                                         time.gmtime(
-                                                                                                            this_time - last_time))), message=push_message)
+                                                                                                            this_time - last_time))),
+            message=push_message)
         cur_state = {
             "epoch": epoch,
             "state_dict": model.state_dict(),
@@ -220,7 +223,8 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     torch.save(model.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
     lg.log("Model saved.")
     final_time = time.time()
-    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))), message=push_message)
+    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))),
+           message=push_message)
     lg.writelog()
 
 
@@ -309,7 +313,8 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", 
                                                                                                     time.strftime(
                                                                                                         "%H:%M:%S",
                                                                                                         time.gmtime(
-                                                                                                            this_time - last_time))), message=push_message)
+                                                                                                            this_time - last_time))),
+            message=push_message)
         cur_state = {
             "epoch": epoch,
             "state_dict": model.state_dict(),
@@ -323,7 +328,8 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", 
     torch.save(model.state_dict(), "/root/autodl-nas/checkpoint/{}.pb".format(task_name))
     lg.log("Model saved.")
     final_time = time.time()
-    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))), message=push_message)
+    lg.log("Training Done. Time elapsed: {}".format(time.strftime("%H:%M:%S", time.gmtime(final_time - start_time))),
+           message=push_message)
     lg.writelog()
 
 
@@ -393,15 +399,24 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
     val_loss = val_loss / t_batch
     acc = val_cor / val_total
-    lg.log("Test Result: {} / {} correct, {} accuracy, {} average loss.".format(val_cor, val_total, acc, val_loss), message=push_message)
+    lg.log("Test Result: {} / {} correct, {} accuracy, {} average loss.".format(val_cor, val_total, acc, val_loss),
+           message=push_message)
     lg.writelog()
 
 
 if __name__ == "__main__":
     task_name = "IMDB_BERTLN_FtP10k_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained, batch_size=20)
+    state = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT_TRAINING_EPOCH_0.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained, batch_size=20,
+                state_path=state)
     model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
     evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
-
+    '''
+    # BERT+RNN FtP10k + FiT
+    task_name = "IMDB_BERTRNN_FtP10k_FiT"
+    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=20)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
+    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
+    '''
 
