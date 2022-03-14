@@ -365,7 +365,7 @@ class IMDBCorpus(Dataset):
                     attn.append(temp[2])
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
-                    if (i + 1) % 20000 == 0:
+                    if (i + 1) % 10000 == 0:
                         print("Reading data {} / {}".format(i+1, file_size))
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
