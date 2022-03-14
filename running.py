@@ -412,7 +412,7 @@ if __name__ == "__main__":
         further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
         state = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT_TRAINING_EPOCH_0.pb"
         fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
-                    batch_size=20,
+                    batch_size=16,
                     state_path=state)
         model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
         evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
@@ -421,7 +421,7 @@ if __name__ == "__main__":
         print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
         task_name = "IMDB_BERTRNN_FtP10k_FiT"
         further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-        fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=20)
+        fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
         model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
         evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
     else:
