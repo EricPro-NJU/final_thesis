@@ -10,6 +10,7 @@ from datasets import IMDBDataSet, IMDBCorpus
 from bert import SimpleBert, RecBert
 from transformer import TransformerEncoder
 from basis import SimpleLSTM
+import sys
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -405,18 +406,24 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 
 if __name__ == "__main__":
-    task_name = "IMDB_BERTLN_FtP10k_FiT"
-    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    state = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT_TRAINING_EPOCH_0.pb"
-    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained, batch_size=20,
-                state_path=state)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
-    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
-    '''
+    if sys.argv[1] == "ft1":
+        print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
+        task_name = "IMDB_BERTLN_FtP10k_FiT"
+        further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+        state = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT_TRAINING_EPOCH_0.pb"
+        fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
+                    batch_size=20,
+                    state_path=state)
+        model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
+        evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
     # BERT+RNN FtP10k + FiT
-    task_name = "IMDB_BERTRNN_FtP10k_FiT"
-    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=20)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
-    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
-    '''
+    elif sys.argv[1] == "ft2":
+        print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
+        task_name = "IMDB_BERTRNN_FtP10k_FiT"
+        further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+        fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=20)
+        model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
+        evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
+    else:
+        print("Please choose task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: IMDB_BERTRNN_FtP10k_FiT")
 
