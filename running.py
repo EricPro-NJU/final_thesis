@@ -398,7 +398,10 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 
 if __name__ == "__main__":
-    task_name = "IMDB_FtP"
-    further_pretraining(task_name, datasets="IMDB")
+    task_name = "IMDB_BERTLN_FtP10k_FiT"
+    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
+    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
 
 
