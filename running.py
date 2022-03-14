@@ -46,7 +46,7 @@ class Log:
                                                                 time.strftime("%Y%m%d%H%M%S", time.localtime()))
 
 
-def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=None):
+def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None):
     # datasets should be read using Dataset class into Dataloader
     # use uncased BERT pretraining model to further pretrain the model
     # set checkpoint each epoch trained
@@ -72,8 +72,8 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
     model = BertForPreTraining.from_pretrained("bert-base-uncased").to(device)
     lg.log("BertForPreTraining loaded.")
     init_epoch = 0
-    t_epoch = 4
-    lr = 2e-5
+    t_epoch = 1
+    lr = 5e-5
     warmup = 0.1
     t_total = 1e5
     optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
@@ -134,7 +134,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=16, state_path=No
     lg.writelog()
 
 
-def basis_training(task_name, datasets="IMDB", batch_size=16, model_name="sp_lstm", bidirec=True, state_path=None):
+def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", bidirec=True, state_path=None):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -224,7 +224,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=16, model_name="sp_lst
     lg.writelog()
 
 
-def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,
+def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", bidirec=True,
                 further_pretrained=None, state_path=None):
     torch.cuda.empty_cache()
     lg = Log(task_name)
@@ -327,7 +327,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
     lg.writelog()
 
 
-def evaluate(task_name, model_path, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True):
+def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="linear", bidirec=True):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load testing data and indexing texts
