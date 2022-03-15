@@ -229,7 +229,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     lg.writelog()
 
 
-def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", bidirec=True,
+def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,
                 further_pretrained=None, state_path=None):
     torch.cuda.empty_cache()
     lg = Log(task_name)
@@ -267,11 +267,9 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", 
     init_epoch = 0
     t_epoch = 4
     lr = 2e-5
-    warmup = 0.1
-    t_total = 1e5
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
+    optimizer = BertAdam(model.parameters(), lr=lr)
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
@@ -406,6 +404,12 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(
+            "Please identify your task by entering the task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: "
+            "IMDB_BERTRNN_FtP10k_FiT\n\t* fp: IMDB_FtP")
+        print("Initiate the task by inputting like: 'python3 running.py [task_name]', eg. 'python3 running.py ft1'.")
+        raise ValueError("Now read all this information above. Do you understand?")
     if sys.argv[1] == "ft1":
         print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
         task_name = "IMDB_BERTLN_FtP10k_FiT"
@@ -414,7 +418,6 @@ if __name__ == "__main__":
                     batch_size=16)
         model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
         evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
-    # BERT+RNN FtP10k + FiT
     elif sys.argv[1] == "ft2":
         print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
         task_name = "IMDB_BERTRNN_FtP10k_FiT"
@@ -428,5 +431,6 @@ if __name__ == "__main__":
         state_path = "/root/autodl-tmp/checkpoint/IMDB_FtP_TRAINING_EPOCH_0.pb"
         further_pretraining(task_name, datasets="IMDB", state_path=state_path)
     else:
-        print("Please choose task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: IMDB_BERTRNN_FtP10k_FiT")
-
+        print(
+            "Please choose task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: IMDB_BERTRNN_FtP10k_FiT\n\t* fp: "
+            "IMDB_FtP")
