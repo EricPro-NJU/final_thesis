@@ -411,8 +411,11 @@ def ft1():
     print("INITIATING TASK: IMDB_BERTLN_FtP100k_FiT")
     task_name = "IMDB_BERTLN_FtP100k_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+
+    state_path = "/root/autodl-tmp/checkpoint/IMDB_BERTLN_FtP100k_FiT_TRAINING_EPOCH_0.pb"
+
     fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
-                batch_size=16)
+                batch_size=16, state_path=state_path)
     model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP100k_FiT.pb"
     evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
 
