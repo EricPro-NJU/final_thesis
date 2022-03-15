@@ -7,6 +7,8 @@ import random
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+debugging = True
+
 
 def random_word(tokens, tokenizer):
     """
@@ -358,6 +360,8 @@ class IMDBCorpus(Dataset):
                 lines = fp.readlines()
                 file_size = len(lines)
                 print("{} data to be read.".format(file_size))
+                if debugging:
+                    print("Debugging mode")
                 for i, line in enumerate(lines):
                     temp = eval(line.strip())
                     inputs.append(temp[0])
@@ -367,6 +371,8 @@ class IMDBCorpus(Dataset):
                     nextsen.append(temp[4])
                     if (i + 1) % 10000 == 0:
                         print("Reading data {} / {}".format(i+1, file_size))
+                    if debugging and (i + 1) >= 100:
+                        break
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
