@@ -403,6 +403,32 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     lg.writelog()
 
 
+def ft1():
+    print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
+    task_name = "IMDB_BERTLN_FtP10k_FiT"
+    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
+                batch_size=16)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
+    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
+
+
+def ft2():
+    print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
+    task_name = "IMDB_BERTRNN_FtP10k_FiT"
+    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
+    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
+
+
+def fp():
+    print("INITIATING TASK: IMDB_FtP")
+    task_name = "IMDB_FtP"
+    state_path = "/root/autodl-tmp/checkpoint/IMDB_FtP_TRAINING_EPOCH_0.pb"
+    further_pretraining(task_name, datasets="IMDB", state_path=state_path)
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(
@@ -411,26 +437,14 @@ if __name__ == "__main__":
         print("Initiate the task by inputting like: 'python3 running.py [task_name]', eg. 'python3 running.py ft1'.")
         raise ValueError("Now read all this information above. Do you understand?")
     if sys.argv[1] == "ft1":
-        print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
-        task_name = "IMDB_BERTLN_FtP10k_FiT"
-        further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-        fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
-                    batch_size=16)
-        model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
-        evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
+        ft1()
     elif sys.argv[1] == "ft2":
-        print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
-        task_name = "IMDB_BERTRNN_FtP10k_FiT"
-        further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-        fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
-        model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
-        evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
+        ft2()
     elif sys.argv[1] == "fp":
-        print("INITIATING TASK: IMDB_FtP")
-        task_name = "IMDB_FtP"
-        state_path = "/root/autodl-tmp/checkpoint/IMDB_FtP_TRAINING_EPOCH_0.pb"
-        further_pretraining(task_name, datasets="IMDB", state_path=state_path)
+        fp()
     else:
         print(
             "Please choose task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: IMDB_BERTRNN_FtP10k_FiT\n\t* fp: "
             "IMDB_FtP")
+        print("Initiate the task by inputting like: 'python3 running.py [task_name]', eg. 'python3 running.py ft1'.")
+        raise ValueError("Now read all this information above. Do you understand?")
