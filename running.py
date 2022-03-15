@@ -267,9 +267,11 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
     init_epoch = 0
     t_epoch = 4
     lr = 2e-5
+    t_total = t_batch * t_epoch
+    warmup = 0.1
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = BertAdam(model.parameters(), lr=lr)
+    optimizer = BertAdam(model.parameters(), lr=lr, t_total=t_total, warmup=warmup)
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
@@ -404,7 +406,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 
 def ft1():
-    print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
+    print("INITIATING TASK: IMDB_BERTLN_FtP100k_FiT")
     task_name = "IMDB_BERTLN_FtP100k_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
     fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
@@ -414,7 +416,7 @@ def ft1():
 
 
 def ft2():
-    print("INITIATING TASK: IMDB_BERTRNN_FtP10k_FiT")
+    print("INITIATING TASK: IMDB_BERTRNN_FtP100k_FiT")
     task_name = "IMDB_BERTRNN_FtP100k_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
     fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
