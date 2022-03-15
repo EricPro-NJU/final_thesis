@@ -408,24 +408,20 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 # ======================TRAINING SCRIPTS=========================
 
 def ft1():
-    print("INITIATING TASK: IMDB_BERTLN_FtP100k_FiT")
-    task_name = "IMDB_BERTLN_FtP100k_FiT"
+    print("INITIATING TASK: IMDB_BERTLN_FiT")
+    task_name = "IMDB_BERTLN_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-
-    state_path = "/root/autodl-tmp/checkpoint/IMDB_BERTLN_FtP100k_FiT_TRAINING_EPOCH_0.pb"
-
-    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
-                batch_size=16, state_path=state_path)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP100k_FiT.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=None, batch_size=16)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FiT.pb"
     evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
 
 
 def ft2():
-    print("INITIATING TASK: IMDB_BERTRNN_FtP100k_FiT")
-    task_name = "IMDB_BERTRNN_FtP100k_FiT"
+    print("INITIATING TASK: IMDB_BERTRNN_FiT")
+    task_name = "IMDB_BERTRNN_FiT"
     further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP100k_FiT.pb"
+    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=None, batch_size=16)
+    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FiT.pb"
     evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
 
 
