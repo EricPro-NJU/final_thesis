@@ -7,7 +7,7 @@ import random
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-debugging = True
+debugging = False
 
 
 def random_word(tokens, tokenizer):
