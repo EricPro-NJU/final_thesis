@@ -73,7 +73,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     model = BertForPreTraining.from_pretrained("bert-base-uncased").to(device)
     lg.log("BertForPreTraining loaded.")
     init_epoch = 0
-    t_epoch = 1
+    t_epoch = 10
     lr = 5e-5
     warmup = 0.1
     t_total = 1e5
@@ -124,7 +124,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
-        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        torch.save(cur_state, "/root/autodl-tmp/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
         lg.log("epoch {}/{}, model checkpoint saved.".format(epoch + 1, t_epoch))
         last_time = time.time()
 
@@ -216,7 +216,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
-        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        torch.save(cur_state, "/root/autodl-tmp/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
         lg.log("epoch {}/{}, model checkpoint saved.".format(epoch + 1, t_epoch))
         last_time = time.time()
 
@@ -321,7 +321,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=24, model_name="linear", 
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
-        torch.save(cur_state, "/root/autodl-nas/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
+        torch.save(cur_state, "/root/autodl-tmp/checkpoint/{}_TRAINING_EPOCH_{}.pb".format(task_name, epoch))
         lg.log("epoch {}/{}, model checkpoint saved.".format(epoch + 1, t_epoch))
         last_time = time.time()
 
@@ -410,10 +410,8 @@ if __name__ == "__main__":
         print("INITIATING TASK: IMDB_BERTLN_FtP10k_FiT")
         task_name = "IMDB_BERTLN_FtP10k_FiT"
         further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-        state = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT_TRAINING_EPOCH_0.pb"
         fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=further_pretrained,
-                    batch_size=16,
-                    state_path=state)
+                    batch_size=16)
         model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FtP10k_FiT.pb"
         evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
     # BERT+RNN FtP10k + FiT
@@ -424,6 +422,11 @@ if __name__ == "__main__":
         fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=further_pretrained, batch_size=16)
         model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FtP10k_FiT.pb"
         evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
+    elif sys.argv[1] == "fp":
+        print("INITIATING TASK: IMDB_FtP")
+        task_name = "IMDB_FtP"
+        state_path = "/root/autodl-tmp/checkpoint/IMDB_FtP_TRAINING_EPOCH_0.pb"
+        further_pretraining(task_name, datasets="IMDB", state_path=state_path)
     else:
         print("Please choose task id:\n\t* ft1: IMDB_BERTLN_FtP10k_FiT\n\t* ft2: IMDB_BERTRNN_FtP10k_FiT")
 
