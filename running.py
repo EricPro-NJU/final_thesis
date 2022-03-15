@@ -43,7 +43,7 @@ class Log:
             fp.writelines(self.log_list)
         self.log_list.clear()
         self.log_num = 0
-        self.log_path = "/root/autodl-nas/log/{}_{}.log".format(task_name,
+        self.log_path = "/root/autodl-nas/log/{}_{}.log".format(self.task_name,
                                                                 time.strftime("%Y%m%d%H%M%S", time.localtime()))
 
 
@@ -404,6 +404,8 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
            message=push_message)
     lg.writelog()
 
+
+# ======================TRAINING SCRIPTS=========================
 
 def ft1():
     print("INITIATING TASK: IMDB_BERTLN_FtP100k_FiT")
