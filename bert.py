@@ -42,15 +42,15 @@ class RecBert(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.d_model = 768
+        self.bidirec = bidirec
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
-        # output: [batch_size, seq_length, d_model]
-        # self.linear = nn.Linear(self.d_model * self.seq_len, self.output_size)
+        # bert_output: [batch_size, seq_length, d_model]
         self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.5, num_layers=2)
-        # hidden: [4, N, hidden]
+        # hidden: [2D, N, hidden]
         # choose the hidden of last layer
-        self.linear = nn.Linear(self.hidden_size * 2, self.output_size)
+        self.linear = nn.Linear(self.hidden_size * (2 if bidirec else 1), self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, inputs, mask):
@@ -64,6 +64,7 @@ class RecBert(nn.Module):
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
         bert_output = bert_feature[11]
         context, (hidden, cell) = self.lstm(bert_output)  # N * seq_len * hidden_size
-        hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1)  # hidden state of the last layer [N, hidden*2]
+        hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
+        #  select the final hidden state of the last layer [N, hidden*D]
         outputs = self.softmax(self.linear(hidden))  # N * output_size
         return outputs

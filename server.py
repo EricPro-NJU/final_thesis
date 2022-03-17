@@ -1,5 +1,6 @@
 import requests
 
+
 def send_message(title, name, content):
     resp = requests.post("https://www.autodl.com/api/v1/wechat/message/push",
                          json={

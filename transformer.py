@@ -56,6 +56,7 @@ def getPositionalEmbedding(batch_size, seq_len, d_model):
     pos_emb[:, :, 1::2] = torch.cos(pos_emb[:, :, 1::2])
     return pos_emb
 
+
 class Configuration:
     def __init__(self):
         self.d_model = 512  # arbitrary
@@ -71,6 +72,7 @@ class Configuration:
         self.n_layer = 6  # arbitrary
         self.epoch_num = 4  # arbitrary
         self.code_dict = {"pad": 0, "start": 1, "end": 2}
+
 
 class MultiheadAttention(nn.Module):
     def __init__(self, d_model, dimq, dimv, n_heads):
@@ -96,7 +98,8 @@ class MultiheadAttention(nn.Module):
         Q = self.WQ(inputQ)  # N * seq_len * (n_heads*dim_q)
         K = self.WK(inputK)  # N * seq_len * (n_heads*dim_k)
         V = self.WV(inputV)  # N * seq_len * (n_heads*dim_v)
-        scores = torch.matmul(Q, K.transpose(-1, -2)) / torch.sqrt(torch.tensor([self.dimk]).cuda())  # N * seq_len * seq_len
+        scores = torch.matmul(Q, K.transpose(-1, -2)) / torch.sqrt(
+            torch.tensor([self.dimk]).cuda())  # N * seq_len * seq_len
         scores[mask == 1] = -1e9
         weights = torch.matmul(F.softmax(scores, dim=-1), V)  # N * seq_len * (n_heads*dim_v)
         output = self.layernorm(self.linear(weights) + inputQ)
@@ -210,6 +213,7 @@ class TransformerDecoder(nn.Module):
 
         return decoder_output
 
+
 class Transformer(nn.Module):
     def __init__(self, conf):
         super(Transformer, self).__init__()
@@ -230,9 +234,10 @@ class Transformer(nn.Module):
         cross_mask = getPadMask(decoder_input, encoder_input, self.conf.code_dict["pad"])
         encoder_output = self.encoder(encoder_input, encoder_mask)
         decoder_output = self.decoder(decoder_input, encoder_output, decoder_mask, cross_mask)
-        prob_matrix = F.softmax(self.linear(decoder_output), dim=-1) # N * tgt_len * tgt_vocab_size
+        prob_matrix = F.softmax(self.linear(decoder_output), dim=-1)  # N * tgt_len * tgt_vocab_size
         output_seq = torch.argmax(prob_matrix, dim=-1)
         return output_seq, prob_matrix
+
 
 '''
 if __name__ == "__main__":

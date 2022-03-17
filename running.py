@@ -9,7 +9,7 @@ from pytorch_pretrained_bert import BertAdam, BertForPreTraining
 from datasets import IMDBDataSet, IMDBCorpus
 from bert import SimpleBert, RecBert
 from transformer import TransformerEncoder
-from basis import SimpleLSTM
+from basis import TextRNN
 import sys
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -160,7 +160,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     # prepare model and set hyper params
     lg.log("Model Config......")
     if model_name == "sp_lstm":
-        model = SimpleLSTM(512, 1024, 2, bidirec=bidirec).to(device)
+        model = TextRNN(512, 1024, 2, bidirec=bidirec).to(device)
         lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
     else:
         raise ValueError("No such model named {}.".format(model_name))
@@ -362,7 +362,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
         model = RecBert(512, 1024, 2, bidirec).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
     elif model_name == "sp_lstm":
-        model = SimpleLSTM(512, 1024, 2, bidirec=bidirec).to(device)
+        model = TextRNN(512, 1024, 2, bidirec=bidirec).to(device)
         lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
 
     else:
