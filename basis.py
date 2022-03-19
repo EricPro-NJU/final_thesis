@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import nltk
+import nltk.tokenize as tokenizer
+from nltk.corpus import stopwords
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 uncased_bert_vocab_size = 30522
@@ -77,6 +80,35 @@ class TextCNN:
         context = self.cnn2(context)
         output = self.softmax(self.linear(self.dropout(context)))
         return output
+
+class BasicTokenizer:
+    def __init__(self, sentence_lst, language='english'):
+        self.stopwords = set(stopwords.words(language))
+        self.word2idx = {'[PAD]': 0, '[CLS]': 1, '[SEP]': 2, '[MASK]': 3}
+        self.token_lst = []
+        self.index_lst = []
+        self.vocab_size = 4
+        self.tokenize(sentence_lst, language)
+
+    def tokenize(self, sentence_lst, language='english'):
+        for sentence in sentence_lst:
+            words = tokenizer.word_tokenize(sentence.lower(), language)
+            tokens = ['[CLS]']
+            index = [self.word2idx['[CLS]']]
+            for i in words:
+                if i not in self.stopwords:
+                    tokens.append(i)
+                    index.append(self.word2idx[i])
+            tokens.append('[SEP]')
+            index.append(self.word2idx['[SEP]'])
+            self.token_lst.append(tokens)
+            self.index_lst.append(index)
+
+
+
+
+
+
 
 
 

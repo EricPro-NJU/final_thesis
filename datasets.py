@@ -306,6 +306,7 @@ def label_logits(labels, group_num):
     return logits
 
 
+
 class IMDBDataSet(Dataset):
     def __init__(self, src_file, token_file=None, index_file=None, mask_file=None, label_file=None):
         super(IMDBDataSet, self).__init__()
