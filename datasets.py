@@ -3,11 +3,38 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 from pytorch_pretrained_bert import BertTokenizer
+from server import Log
 import random
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 debugging = False
+
+dataset_dict = {
+    "IMDB": {
+        "train": {
+            "source": "/root/autodl-tmp/IMDBtrain.csv",
+            "token": "/root/autodl-tmp/IMDBtrain_token.txt",
+            "index": "/root/autodl-tmp/IMDBtrain_index.txt",
+            "mask": "/root/autodl-tmp/IMDBtrain_mask.txt",
+            "label": "/root/autodl-tmp/IMDBtrain_label.txt"
+        },
+        "test": {
+            "source": "/root/autodl-tmp/IMDBtest.csv",
+            "token": "/root/autodl-tmp/IMDBtest_token.txt",
+            "index": "/root/autodl-tmp/IMDBtest_index.txt",
+            "mask": "/root/autodl-tmp/IMDBtest_mask.txt",
+            "label": "/root/autodl-tmp/IMDBtest_label.txt"
+        },
+        "corpus": {
+            "source": "/root/autodl-tmp/IMDB_corpus.txt",
+            "token": "/root/autodl-tmp/IMDB_corpus_tokenized.txt",
+            "index": "/root/autodl-tmp/IMDB_corpus_indexed.txt"
+        }
+    }
+}
+
+
 
 
 def random_word(tokens, tokenizer):
@@ -55,12 +82,16 @@ def random_word(tokens, tokenizer):
 
 def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_path=None, data_label_path=None):
     '''
+    ====================SOURCE DATA FILE FORMAT==========================
+    1. one data for a line
+    2. first label (indicated by a single number), then a whitespace or tab, then the whole sentence
+    =====================================================================
     Read data from file, and save tokens, indexes, mask if necessary
-    :param data_path:
-    :param data_token_path: if None, do not save to file
-    :param data_index_path:
-    :param data_mask_path:
-    :param data_label_path:
+    :param data_path(input_path):
+    :param data_token_path(output_path): if None, do not save to file
+    :param data_index_path(output_path):
+    :param data_mask_path(output_path):
+    :param data_label_path(output_path):
     :return: 4 lists including data information
     '''
 
@@ -122,10 +153,15 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
 
 def separate_corpus(corpus_path, save_to=None):
     '''
+    ====================SOURCE DATA FILE FORMAT===============================================
+    1. One sentence for a line
+    2. Paragraphs are split by a blank line
+    ==========================================================================================
     separate the corpus into two categories: continuous sentences, randoms sentences
     make sure the numbers of items in both lists are the same
     IMPORTANT: items in token list format!
-    :param corpus_path:
+    :param corpus_path(input path):
+    :param save_to(output path):
     :return: two lists. list format: token_for_sentence_1, token_for_sentence_2, continuous or not (0 for continuous sentences)
     '''
     print("separating corpus......")
@@ -204,9 +240,10 @@ def separate_corpus(corpus_path, save_to=None):
 
 def index_corpus(corpus_path, tokens_path, save_to=None):
     '''
-    :param save_to:
-    :param corpus_path:
-    :param tokens_path:
+    :param corpus_path(input path for planA): same format of input of function separate_corpus
+    :param tokens_path(input path for planB): the output format of function separate_corpus
+    NOTICE: input plan A has first priority. At least one plan should be identified
+    :param save_to(output path):
     :return: # the final indexes should include:
     #   1. input idx with format: [CLS] sentence A [SEP] sentence B [SEP] ([PAD]+) (with words masked)
     #   2. token type idx with format: 0 0 0 ... 0 1 1 1 ... (0 for anything before first [SEP])
@@ -241,7 +278,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                     continue
                 tokens_list.append(eval(line.strip()))
                 if (i + 1) % 10000 == 0:
-                    print("Read data {} / {}".format(i+1, file_len))
+                    print("Read data {} / {}".format(i + 1, file_len))
     if max_size > 128:
         max_size = 128
     # random.shuffle(tokens_list)
@@ -287,7 +324,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
         assert len(lm_item) == (max_size + 3)
         masked_lm.append(lm_item)
         if (i + 1) % 1000 == 0:
-            print("Processed Data {} / {}".format(i+1, size))
+            print("Processed Data {} / {}".format(i + 1, size))
     if save_to is not None:
         with open(save_to, "w", encoding="UTF-8") as fp:
             for i in range(size):
@@ -306,19 +343,24 @@ def label_logits(labels, group_num):
     return logits
 
 
-
-class IMDBDataSet(Dataset):
-    def __init__(self, src_file, token_file=None, index_file=None, mask_file=None, label_file=None):
-        super(IMDBDataSet, self).__init__()
-        if src_file is not None:
-            token_list, index_list, mask_list, label_list = index_data(src_file, token_file, index_file, mask_file,
-                                                                       label_file)
-            self.input_idx = torch.LongTensor(index_list)  # num * seq_len
-            self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
-            self.label_idx = torch.LongTensor(label_list)  # num * 2
-        else:
-            if index_file is None or mask_file is None or label_file is None:
-                raise ValueError("You should identify source file of data.")
+class TextDataSet(Dataset):
+    def __init__(self, name, split="train", read_from_cache=False, log=None):
+        super(TextDataSet, self).__init__()
+        self.name = name
+        self.split = split
+        self.lg = log
+        if name not in dataset_dict:
+            self.log("Data not found.")
+            raise ValueError("Cannot found dataset named {}".format(name))
+        if split not in ["train", "test"]:
+            self.log("Split not found.")
+            raise ValueError("Cannot found split named {}".format(split))
+        src_file = dataset_dict[name][split]["source"]
+        token_file = dataset_dict[name][split]["token"]
+        index_file = dataset_dict[name][split]["index"]
+        mask_file = dataset_dict[name][split]["mask"]
+        label_file = dataset_dict[name][split]["label"]
+        if read_from_cache:
             index = []
             mask = []
             label = []
@@ -337,6 +379,12 @@ class IMDBDataSet(Dataset):
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
             self.label_idx = torch.LongTensor(label)
+        else:
+            token_list, index_list, mask_list, label_list = index_data(src_file, token_file, index_file, mask_file,
+                                                                       label_file)
+            self.input_idx = torch.LongTensor(index_list)  # num * seq_len
+            self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
+            self.label_idx = torch.LongTensor(label_list)  # num * 2
 
     def __len__(self):
         return self.input_idx.shape[0]
@@ -344,13 +392,29 @@ class IMDBDataSet(Dataset):
     def __getitem__(self, idx):
         return self.input_idx[idx], self.mask_idx[idx], self.label_idx[idx]
 
-
-class IMDBCorpus(Dataset):
-    def __init__(self, src_file, token_file=None, index_file=None):
-        super(IMDBCorpus, self).__init__()
-        if src_file is not None or token_file is not None:
-            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
+    def log(self, msg):
+        if self.log is None:
+            print(msg)
         else:
+            self.lg.log(msg)
+
+
+class TextCorpus(Dataset):
+    def __init__(self, name, split="corpus", read_from_cache=False, log=None):
+        super(TextCorpus, self).__init__()
+        self.name = name
+        self.split = split
+        self.lg = log
+        if name not in dataset_dict:
+            self.log("Data not found.")
+            raise ValueError("Cannot found dataset named {}".format(name))
+        if split not in ["corpus"]:
+            self.log("Split not found.")
+            raise ValueError("Cannot found split named {}".format(split))
+        src_file = dataset_dict[name][split]["source"]
+        token_file = dataset_dict[name][split]["token"]
+        index_file = dataset_dict[name][split]["index"]
+        if read_from_cache:
             print("Reading data from cache file.")
             inputs = []
             tokentype = []
@@ -371,9 +435,11 @@ class IMDBCorpus(Dataset):
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
                     if (i + 1) % 10000 == 0:
-                        print("Reading data {} / {}".format(i+1, file_size))
+                        print("Reading data {} / {}".format(i + 1, file_size))
                     if debugging and (i + 1) >= 100:
                         break
+        else:
+            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
@@ -386,6 +452,14 @@ class IMDBCorpus(Dataset):
     def __getitem__(self, idx):
         return self.input_idx[idx], self.token_type[idx], self.attn_mask[idx], self.masked_lm[idx], self.next_sentence[
             idx]
+
+    def log(self, msg):
+        if self.log is None:
+            print(msg)
+        else:
+            self.lg.log(msg)
+
+
 
 
 if __name__ == "__main__":

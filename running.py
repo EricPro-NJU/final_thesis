@@ -4,50 +4,23 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.optim as optim
 import time
-import server
+from server import Log
 from pytorch_pretrained_bert import BertAdam, BertForPreTraining
-from datasets import IMDBDataSet, IMDBCorpus
+from datasets import TextDataSet, TextCorpus, dataset_dict
 from bert import SimpleBert, RecBert
 from transformer import TransformerEncoder
-from basis import TextRNN
+from basis import TextRNN, TextCNN
 import sys
+import argparse
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 push_message = True
 
-
-class Log:
-    def __init__(self, task_name):
-        self.task_name = task_name
-        self.log_list = []
-        self.log_path = "/root/autodl-nas/log/{}_{}.log".format(task_name,
-                                                                time.strftime("%Y%m%d%H%M%S", time.localtime()))
-        self.log_num = 0
-
-    def log(self, text, mute=False, discard=False, message=False):
-        log_text = "{}\t{}".format(time.strftime("LOG: %Y-%m-%d %H:%M:%S", time.localtime()), text)
-        if not discard:
-            self.log_list.append("{}\n".format(log_text))
-            self.log_num += 1
-        if not mute:
-            print(log_text)
-        if message:
-            server.send_log_message(self.task_name, text)
-
-    def writelog(self):
-        if self.log_num == 0:
-            print("Warning from class Log: No log will be written.")
-            return
-        with open(self.log_path, "w", encoding="UTF-8") as fp:
-            fp.writelines(self.log_list)
-        self.log_list.clear()
-        self.log_num = 0
-        self.log_path = "/root/autodl-nas/log/{}_{}.log".format(self.task_name,
-                                                                time.strftime("%Y%m%d%H%M%S", time.localtime()))
+model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm"}
 
 
-def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None):
+def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None, read_from_cache="False"):
     # datasets should be read using Dataset class into Dataloader
     # use uncased BERT pretraining model to further pretrain the model
     # set checkpoint each epoch trained
@@ -56,15 +29,15 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     lg = Log(task_name)
     # load training data and indexing texts
     lg.log("Indexing Training Data......")
-
-    if datasets == "IMDB":
-        corpus_file = "/root/autodl-tmp/IMDB_corpus.txt"
-        corpus_token_file = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
-        corpus_index_file = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
-        dataloader = DataLoader(IMDBCorpus(None, None, corpus_index_file), batch_size=batch_size,
-                                shuffle=True)
+    if datasets in dataset_dict:
+        dataloader = DataLoader(
+            TextCorpus(datasets, split="corpus", read_from_cache=read_from_cache, log=lg),
+            batch_size=batch_size,
+            shuffle=True
+        )
     else:
         raise ValueError("No such dataset called {}".format(datasets))
+
     t_batch = len(dataloader)
     lg.log("Index Training Data Done.")
 
@@ -137,21 +110,17 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     lg.writelog()
 
 
-def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", bidirec=True, state_path=None):
+def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", state_path=None, read_from_cache=False):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
     lg.log("Indexing Training Data......")
-
-    if datasets == "IMDB":
-        train_file = "/root/autodl-tmp/IMDBtrain.csv"
-        train_token_file = "/root/autodl-tmp/IMDBtrain_token.txt"
-        train_index_file = "/root/autodl-tmp/IMDBtrain_index.txt"
-        train_mask_file = "/root/autodl-tmp/IMDBtrain_mask.txt"
-        train_label_file = "/root/autodl-tmp/IMDBtrain_label.txt"
+    if datasets in dataset_dict:
         trainloader = DataLoader(
-            IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
-            batch_size=batch_size, shuffle=True)
+            TextDataSet(datasets, split="train", read_from_cache=read_from_cache, log=lg),
+            batch_size=batch_size,
+            shuffle=True
+        )
     else:
         raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(trainloader)
@@ -159,9 +128,9 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
 
     # prepare model and set hyper params
     lg.log("Model Config......")
-    if model_name == "sp_lstm":
-        model = TextRNN(512, 1024, 2, bidirec=bidirec).to(device)
-        lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
+    if model_name == "textrnn":
+        model = TextRNN(512, 1024, 2).to(device)
+        lg.log("choosing Simple {}LSTM model.".format("bi-directional "))
     else:
         raise ValueError("No such model named {}.".format(model_name))
     model.train()
@@ -229,21 +198,16 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     lg.writelog()
 
 
-def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", bidirec=True,
-                further_pretrained=None, state_path=None):
+def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
+                further_pretrained=None, state_path=None, read_from_cache=False):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
     lg.log("Indexing Training Data......")
 
-    if datasets == "IMDB":
-        train_file = "/root/autodl-tmp/IMDBtrain.csv"
-        train_token_file = "/root/autodl-tmp/IMDBtrain_token.txt"
-        train_index_file = "/root/autodl-tmp/IMDBtrain_index.txt"
-        train_mask_file = "/root/autodl-tmp/IMDBtrain_mask.txt"
-        train_label_file = "/root/autodl-tmp/IMDBtrain_label.txt"
+    if datasets in dataset_dict:
         trainloader = DataLoader(
-            IMDBDataSet(None, train_token_file, train_index_file, train_mask_file, train_label_file),
+            TextDataSet(datasets, split="train", read_from_cache=read_from_cache, log=lg),
             batch_size=batch_size, shuffle=True)
     else:
         raise ValueError("No such dataset called {}".format(datasets))
@@ -252,12 +216,12 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
-    if model_name == "linear":
+    if model_name == "bert_linear":
         model = SimpleBert(512, 2).to(device)
         lg.log("choosing BERT + Linear model.")
-    elif model_name == "lstm":
-        model = RecBert(512, 1024, 2, bidirec).to(device)
-        lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
+    elif model_name == "bert_lstm":
+        model = RecBert(512, 1024, 2).to(device)
+        lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
     else:
         model = SimpleBert(512, 2).to(device)
         lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
@@ -334,19 +298,15 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear", 
     lg.writelog()
 
 
-def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="linear", bidirec=True):
+def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="linear", read_from_cache=False):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load testing data and indexing texts
     lg.log("Indexing Testing Data......")
 
-    if datasets == "IMDB":
-        test_file = "/root/autodl-tmp/IMDBtest.csv"
-        test_token_file = "/root/autodl-tmp/IMDBtest_token.txt"
-        test_index_file = "/root/autodl-tmp/IMDBtest_index.txt"
-        test_mask_file = "/root/autodl-tmp/IMDBtest_mask.txt"
-        test_label_file = "/root/autodl-tmp/IMDBtest_label.txt"
-        testloader = DataLoader(IMDBDataSet(None, test_token_file, test_index_file, test_mask_file, test_label_file),
+    if datasets in dataset_dict:
+        testloader = DataLoader(
+            TextDataSet(datasets, split="test", read_from_cache=read_from_cache, log=lg),
                                 batch_size=batch_size, shuffle=True)
     else:
         raise ValueError("No such dataset called {}".format(datasets))
@@ -355,15 +315,15 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
-    if model_name == "linear":
+    if model_name == "bert_linear":
         model = SimpleBert(512, 2).to(device)
         lg.log("choosing BERT + Linear model.")
-    elif model_name == "lstm":
-        model = RecBert(512, 1024, 2, bidirec).to(device)
-        lg.log("choosing BERT + {}LSTM model.".format("bi-directional " if bidirec else ""))
-    elif model_name == "sp_lstm":
-        model = TextRNN(512, 1024, 2, bidirec=bidirec).to(device)
-        lg.log("choosing Simple {}LSTM model.".format("bi-directional " if bidirec else ""))
+    elif model_name == "bert_lstm":
+        model = RecBert(512, 1024, 2).to(device)
+        lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
+    elif model_name == "textrnn":
+        model = TextRNN(512, 1024, 2).to(device)
+        lg.log("choosing Simple {}LSTM model.".format("bi-directional "))
 
     else:
         model = SimpleBert(512, 2).to(device)
@@ -407,42 +367,56 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 # ======================TRAINING SCRIPTS=========================
 
-def ft1():
-    print("INITIATING TASK: IMDB_BERTLN_FiT")
-    task_name = "IMDB_BERTLN_FiT"
-    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    fine_tuning(task_name, datasets="IMDB", model_name="linear", further_pretrained=None, batch_size=16)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTLN_FiT.pb"
-    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="linear")
-
-
-def ft2():
-    print("INITIATING TASK: IMDB_BERTRNN_FiT")
-    task_name = "IMDB_BERTRNN_FiT"
-    further_pretrained = "/root/autodl-nas/checkpoint/IMDB_FtP.pb"
-    fine_tuning(task_name, datasets="IMDB", model_name="lstm", further_pretrained=None, batch_size=16)
-    model_path = "/root/autodl-nas/checkpoint/IMDB_BERTRNN_FiT.pb"
-    evaluate(task_name, model_path=model_path, datasets="IMDB", model_name="lstm")
-
-
-def fp():
-    print("INITIATING TASK: IMDB_FtP")
-    task_name = "IMDB_FtP"
-    further_pretraining(task_name, datasets="IMDB")
-
-
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Initiate the task by inputting like: 'python3 running.py [task_name]', eg. 'python3 running.py ft1'.")
-        raise ValueError("No task name assigned")
-    if sys.argv[1] == "ft1":
-        ft1()
-    elif sys.argv[1] == "ft2":
-        ft2()
-    elif sys.argv[1] == "fp":
-        fp()
-    elif sys.argv[1] == "ft":
-        ft1()
-        ft2()
-    else:
-        raise ValueError("Can't read task name.")
+    parser = argparse.ArgumentParser()
+    # required
+    parser.add_argument("--name", help="Identify task name", required=True, type=str)
+    parser.add_argument("--data", help="Indicate the name of dataset", required=True, type=str)
+    parser.add_argument("--model", help="Indicate the name of model", required=True, type=str)
+    # task phase indicate
+    parser.add_argument("--further_pretraining", help="Do further pretraining on given corpus (For Bert "
+                                                              "related model only)", action="store_true")
+    parser.add_argument("--fine_tuning", help="Do Fine Tuning on given training data (For Bert related model "
+                                                      "only", action="store_true")
+    parser.add_argument("--training", help="Do Training (For baseline model only", action="store_true")
+    parser.add_argument("--testing", help="Do Testing on given model", action="store_true")
+    # custom settings
+    parser.add_argument("--read_from_cache", help="Read data from cache file processed early",
+                        action="store_true")
+    parser.add_argument("--ftp_batch_size", help="Batch size for further pretraining", type=int, default=32)
+    parser.add_argument("--fit_batch_size", help="Batch size for fine tuning", type=int, default=24)
+    parser.add_argument("--train_batch_size", help="Batch size for training", type=int, default=32)
+    parser.add_argument("--test_batch_size", help="Batch size for testing", type=int, default=24)
+    # load state_path
+    parser.add_argument("--ftp_state_path", help="Load state of further_pretraining", type=str, default=None)
+    parser.add_argument("--fit_state_path", help="Load state of fine_tuning", type=str, default=None)
+    parser.add_argument("--train_state_path", help="Load state of training", type=str, default=None)
+    parser.add_argument("--fit_ftp_path", help="Load args of further_pretrained Bert model", type=str, default=None)
+    parser.add_argument("--test_model_path", help="Load model for testing, default'/root/autodl-nas/checkpoint/["
+                                                  "--name].pb'", default=None)
+
+    args = parser.parse_args()
+
+    if args.data not in dataset_dict:
+        raise ValueError("Dataset not found ({} is not in the dataset dict)".format(args.data))
+    if args.model not in model_dict:
+        raise ValueError("Model not found ({} is not in the model dict)".format(args.model))
+    if args.further_pretraining:
+        if args.model not in ["bert_linear", "bert_lstm"]:
+            raise ValueError("Further pretraining can only perform in Bert Models.")
+        further_pretraining(args.name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache)
+    if args.fine_tuning:
+        if args.model not in ["bert_linear", "bert_lstm"]:
+            raise ValueError("Fine tuning can only perform in Bert Models.")
+        fine_tuning(args.name, args.data, args.model, args.fit_ftp_path, args.fit_state_path, args.read_from_cache)
+    if args.training:
+        if args.model in ["bert_linear", "bert_lstm"]:
+            raise ValueError("Please use fine tuning instead of training for Bert Models.")
+        basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path, args.read_from_cache)
+    if args.testing:
+        if args.test_model_path is None:
+            model_path = '/root/autodl-nas/checkpoint/{}.pb'.format(args.name)
+        else:
+            model_path = args.test_model_path
+        evaluate(args.name, model_path, args.data, args.test_batch_size, args.model, args.read_from_cache)
+

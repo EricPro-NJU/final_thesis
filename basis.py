@@ -63,12 +63,12 @@ class TextCNN:
             nn.Conv2d(1, hidden_size, kernel_size),
             nn.ReLU(),
             nn.MaxPool2d(2)
-        )   # [N, hidden_size, height, width]
+        )  # [N, hidden_size, height, width]
         self.cnn2 = nn.Sequential(
-            nn.Conv2d(hidden_size, hidden_size*2, kernel_size),
+            nn.Conv2d(hidden_size, hidden_size * 2, kernel_size),
             nn.ReLU(),
             nn.MaxPool2d(2)
-        )   # [N, hidden_size * 2, height2, width2]
+        )  # [N, hidden_size * 2, height2, width2]
         self.dropout = nn.Dropout(p=0.5)
         self.linear = nn.Linear(hidden_size * 2 * height2 * width2, output_size)
         self.softmax = nn.Softmax(dim=-1)
@@ -81,7 +81,11 @@ class TextCNN:
         output = self.softmax(self.linear(self.dropout(context)))
         return output
 
+
 class BasicTokenizer:
+    """
+    We won't use this any more.
+    """
     def __init__(self, sentence_lst, language='english'):
         self.stopwords = set(stopwords.words(language))
         self.word2idx = {'[PAD]': 0, '[CLS]': 1, '[SEP]': 2, '[MASK]': 3}
@@ -103,14 +107,3 @@ class BasicTokenizer:
             index.append(self.word2idx['[SEP]'])
             self.token_lst.append(tokens)
             self.index_lst.append(index)
-
-
-
-
-
-
-
-
-
-
-

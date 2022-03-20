@@ -10,11 +10,13 @@ Google Colab is too unstable. TAT
 ## Goal: Before 2020.4.1
 1. Rewrite datasets.py
 
-    We notice that all the datasets that are required are in package torchtext. 
+    ~~We notice that all the datasets that are required are in package torchtext. 
    We can write a general method/class to process the datasets.
    By indicating the datasets name, we can create different dataloaders
    in running scripts. In that case, running.py should be 
-   rewritten too.
+   rewritten too.~~
+   
+   F**K the internet error
    
 2. Run scripts to get results.
 
