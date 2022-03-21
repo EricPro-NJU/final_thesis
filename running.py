@@ -509,7 +509,7 @@ if __name__ == "__main__":
     parser.add_argument("--fit_ftp_path", help="Load args of further_pretrained Bert model", type=str, default=None)
     parser.add_argument("--test_model_path", help="Load model for testing, default'/root/autodl-nas/checkpoint/["
                                                   "--name].pb'", default=None)
-    parser.add_argument("--debug", help="Debug Mode (Only read a small number of data from dataset")
+    parser.add_argument("--debug", help="Debug Mode (Only read a small number of data from dataset", action="store_true")
     print("Parsing arguments......")
     args = parser.parse_args()
     ret, msg = valid(args)
