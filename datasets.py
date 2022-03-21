@@ -103,10 +103,12 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
 
     with open(data_path, "r", encoding="UTF-8-sig") as train_file:
         linereader = train_file.readlines()
-        for line in linereader:
+        for i, line in enumerate(linereader):
             num = eval(line[0])
             sentence = line[2:]
             data_list.append([num, sentence.strip()])
+            if debugging and i > 100:
+                break
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -198,6 +200,8 @@ def separate_corpus(corpus_path, save_to=None):
                         cache = None
             if (i + 1) % 2000 == 0:
                 print("Read data {} / {}".format(i + 1, file_len))
+            if debugging and i > 100:
+                break
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
     while len0 > len1:
@@ -279,6 +283,8 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                 tokens_list.append(eval(line.strip()))
                 if (i + 1) % 10000 == 0:
                     print("Read data {} / {}".format(i + 1, file_len))
+                if debugging and i > 100:
+                    break
     if max_size > 128:
         max_size = 128
     # random.shuffle(tokens_list)
@@ -366,15 +372,21 @@ class TextDataSet(Dataset):
             label = []
             with open(index_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
-                for line in linereader:
+                for i, line in enumerate(linereader):
+                    if debugging and i > 100:
+                        break
                     index.append(eval(line))
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
-                for line in linereader:
+                for i, line in enumerate(linereader):
+                    if debugging and i > 100:
+                        break
                     mask.append(eval(line))
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
-                for line in linereader:
+                for i, line in enumerate(linereader):
+                    if debugging and i > 100:
+                        break
                     label.append(eval(line))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)

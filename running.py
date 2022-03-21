@@ -7,6 +7,7 @@ import time
 from server import Log
 from pytorch_pretrained_bert import BertAdam, BertForPreTraining
 from datasets import TextDataSet, TextCorpus, dataset_dict
+import datasets
 from bert import SimpleBert, RecBert
 from transformer import TransformerEncoder
 from basis import TextRNN, TextCNN
@@ -111,7 +112,8 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     lg.writelog()
 
 
-def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", state_path=None, read_from_cache=False):
+def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", state_path=None,
+                   read_from_cache=False):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -308,7 +310,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     if datasets in dataset_dict:
         testloader = DataLoader(
             TextDataSet(datasets, split="test", read_from_cache=read_from_cache, log=lg),
-                                batch_size=batch_size, shuffle=True)
+            batch_size=batch_size, shuffle=True)
     else:
         raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(testloader)
@@ -395,7 +397,8 @@ def valid(args):
     if args.further_pretraining:
         save_to = "/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)
         if os.path.exists(save_to):
-            return 1, "WARNING: Further pretraining model {} exists. The newly trained model will overwritten!".format(save_to)
+            return 1, "WARNING: Further pretraining model {} exists. The newly trained model will overwritten!".format(
+                save_to)
     if args.fine_tuning or args.training:
         save_to = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
         if os.path.exists(save_to):
@@ -407,8 +410,10 @@ def info(args):
     print("============ERIC'S FINAL THESIS MODEL TRAINING SYSTEM==============")
     print("Config Info: ")
     phase = 1
+    if args.debug:
+        print("Debugging Mode activated.")
     if args.further_pretraining:
-        print("Phase {}: Further Pretraining Bert Model with Standard Pretraining Tasks.")
+        print("Phase {}: Further Pretraining Bert Model with Standard Pretraining Tasks.".format(phase))
         print("    Task name: {}_FtP".format(args.name))
         print("    Training dataset: {}".format(args.data))
         print("    Batch Size: {}".format(args.ftp_batch_size))
@@ -417,18 +422,19 @@ def info(args):
         print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)))
         phase += 1
     if args.fine_tuning:
-        print("Phase {}: Fine Tuning Bert Model.")
+        print("Phase {}: Fine Tuning Bert Model.".format(phase))
         print("    Task name: {}".format(args.name))
         print("    Training dataset: {}".format(args.data))
         print("    Model: {}".format(args.model))
         print("    Batch Size: {}".format(args.fit_batch_size))
         print("    State Path: {}".format(args.fit_state_path if args.fit_state_path else "Not Indicated"))
-        print("    Pretrained Model: {}".format(args.fit_ftp_path if args.fit_ftp_path else "Uncased or from last phase"))
+        print(
+            "    Pretrained Model: {}".format(args.fit_ftp_path if args.fit_ftp_path else "Uncased or from last phase"))
         print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
         print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}.pb".format(args.name)))
         phase += 1
     if args.training:
-        print("Phase {}: Training Model.")
+        print("Phase {}: Training Model.".format(phase))
         print("    Task name: {}".format(args.name))
         print("    Training dataset: {}".format(args.data))
         print("    Model: {}".format(args.model))
@@ -438,7 +444,7 @@ def info(args):
         print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}.pb".format(args.name)))
         phase += 1
     if args.testing:
-        print("Phase {}: Testing Model.")
+        print("Phase {}: Testing Model.".format(phase))
         print("    Task name: {}".format(args.name))
         print("    Testing dataset: {}".format(args.data))
         print("    Model: {}".format(args.model))
@@ -446,7 +452,10 @@ def info(args):
         print("    Trained Model: {}".format(args.test_model_path if args.test_model_path else "From last phase"))
         print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
 
+
 def session(args):
+    if args.debug:
+        datasets.debugging = True
     if args.further_pretraining:
         task_name = "{}_FtP".format(args.name)
         further_pretraining(task_name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache)
@@ -460,18 +469,18 @@ def session(args):
             ftp_path = args.fit_ftp_path
         fine_tuning(args.name, args.data, args.model, ftp_path, args.fit_state_path, args.read_from_cache)
     if args.training:
-        basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path, args.read_from_cache)
+        basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path,
+                       args.read_from_cache)
     if args.testing:
         if args.fine_tuning or args.training:
             if args.test_model_path:
-                print("WARNING: You config to train but still identify a saved model path. The newly trained model "
-                      "will be saved, but never utilized for testing!")
                 model_path = args.test_model_path
             else:
                 model_path = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
         else:
             model_path = args.test_model_path
         evaluate(args.name, model_path, args.data, args.test_batch_size, args.model, args.read_from_cache)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -500,14 +509,19 @@ if __name__ == "__main__":
     parser.add_argument("--fit_ftp_path", help="Load args of further_pretrained Bert model", type=str, default=None)
     parser.add_argument("--test_model_path", help="Load model for testing, default'/root/autodl-nas/checkpoint/["
                                                   "--name].pb'", default=None)
+    parser.add_argument("--debug", help="Debug Mode (Only read a small number of data from dataset")
     print("Parsing arguments......")
     args = parser.parse_args()
     ret, msg = valid(args)
     if ret == 2:
         raise ValueError(msg)
+    elif ret == 1:
+        print(msg)
+        ans = input("Your input has received warning, do you still want to initiate your session?(Y/N)")
+        if ans != "Y" and ans != "y":
+            raise ValueError("Session terminated.")
     else:
         print(msg)
     info(args)
     print("Start Session.")
     session(args)
-
