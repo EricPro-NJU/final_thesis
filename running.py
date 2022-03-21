@@ -524,7 +524,7 @@ if __name__ == "__main__":
     if ret == 2:
         raise ValueError(msg)
     elif ret == 1:
-        print(msg)
+        print("\033[33m{}\033[0m".format(msg))
         ans = input("Your input has received warning, do you still want to initiate your session?(Y/N)")
         if ans != "Y" and ans != "y":
             raise ValueError("Session terminated.")
