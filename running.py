@@ -12,6 +12,7 @@ from transformer import TransformerEncoder
 from basis import TextRNN, TextCNN
 import sys
 import argparse
+import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -367,19 +368,124 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
 # ======================TRAINING SCRIPTS=========================
 
+
+def valid(args):
+    if args.data not in dataset_dict:
+        return 2, "Dataset not found ({} is not in the dataset dict)".format(args.data)
+    if args.model not in model_dict:
+        return 2, "Model not found ({} is not in the model dict)".format(args.model)
+    if args.further_pretraining and args.model not in ["bert_linear", "bert_lstm"]:
+        return 2, "Further pretraining can only perform in Bert Models."
+    if args.fine_tuning and args.model not in ["bert_linear", "bert_lstm"]:
+        return 2, "Fine tuning can only perform in Bert Models."
+    if args.training and args.model in ["bert_linear", "bert_lstm"]:
+        return 2, "Please use fine tuning instead of training for Bert Models."
+    if args.testing:
+        if not (args.fine_tuning or args.training):
+            if not args.test_model_path:
+                return 2, "No training configs or identify any testing model path."
+    if args.fine_tuning and args.further_pretraining:
+        if args.fit_ftp_path:
+            return 1, "WARNING: You config to further pretrain Bert model but still identify a FtP Model path. The " \
+                      "new Ftp Model will be saved, but not utilized for fine-tuning! "
+    if args.testing and (args.fine_tuning or args.training):
+        if args.test_model_path:
+            return 1, "WARNING: You config to train but still identify a saved model path. The newly trained model " \
+                      "will be saved, but never utilized for testing!"
+    if args.further_pretraining:
+        save_to = "/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)
+        if os.path.exists(save_to):
+            return 1, "WARNING: Further pretraining model {} exists. The newly trained model will overwritten!".format(save_to)
+    if args.fine_tuning or args.training:
+        save_to = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
+        if os.path.exists(save_to):
+            return 1, "WARNING: Training model {} exists. The newly trained model will overwritten!".format(save_to)
+    return 0, "Parameter validation check pass"
+
+
+def info(args):
+    print("============ERIC'S FINAL THESIS MODEL TRAINING SYSTEM==============")
+    print("Config Info: ")
+    phase = 1
+    if args.further_pretraining:
+        print("Phase {}: Further Pretraining Bert Model with Standard Pretraining Tasks.")
+        print("    Task name: {}_FtP".format(args.name))
+        print("    Training dataset: {}".format(args.data))
+        print("    Batch Size: {}".format(args.ftp_batch_size))
+        print("    State Path: {}".format(args.ftp_state_path if args.ftp_state_path else "Not Indicated"))
+        print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
+        print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)))
+        phase += 1
+    if args.fine_tuning:
+        print("Phase {}: Fine Tuning Bert Model.")
+        print("    Task name: {}".format(args.name))
+        print("    Training dataset: {}".format(args.data))
+        print("    Model: {}".format(args.model))
+        print("    Batch Size: {}".format(args.fit_batch_size))
+        print("    State Path: {}".format(args.fit_state_path if args.fit_state_path else "Not Indicated"))
+        print("    Pretrained Model: {}".format(args.fit_ftp_path if args.fit_ftp_path else "Uncased or from last phase"))
+        print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
+        print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}.pb".format(args.name)))
+        phase += 1
+    if args.training:
+        print("Phase {}: Training Model.")
+        print("    Task name: {}".format(args.name))
+        print("    Training dataset: {}".format(args.data))
+        print("    Model: {}".format(args.model))
+        print("    Batch Size: {}".format(args.train_batch_size))
+        print("    State Path: {}".format(args.train_state_path if args.train_state_path else "Not Indicated"))
+        print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
+        print("    Model Save to: {}".format("/root/autodl-nas/checkpoint/{}.pb".format(args.name)))
+        phase += 1
+    if args.testing:
+        print("Phase {}: Testing Model.")
+        print("    Task name: {}".format(args.name))
+        print("    Testing dataset: {}".format(args.data))
+        print("    Model: {}".format(args.model))
+        print("    Batch Size: {}".format(args.test_batch_size))
+        print("    Trained Model: {}".format(args.test_model_path if args.test_model_path else "From last phase"))
+        print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
+
+def session(args):
+    if args.further_pretraining:
+        task_name = "{}_FtP".format(args.name)
+        further_pretraining(task_name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache)
+    if args.fine_tuning:
+        if args.further_pretraining:
+            if args.fit_ftp_path:
+                ftp_path = args.fit_ftp_path
+            else:
+                ftp_path = "/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)
+        else:
+            ftp_path = args.fit_ftp_path
+        fine_tuning(args.name, args.data, args.model, ftp_path, args.fit_state_path, args.read_from_cache)
+    if args.training:
+        basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path, args.read_from_cache)
+    if args.testing:
+        if args.fine_tuning or args.training:
+            if args.test_model_path:
+                print("WARNING: You config to train but still identify a saved model path. The newly trained model "
+                      "will be saved, but never utilized for testing!")
+                model_path = args.test_model_path
+            else:
+                model_path = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
+        else:
+            model_path = args.test_model_path
+        evaluate(args.name, model_path, args.data, args.test_batch_size, args.model, args.read_from_cache)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # required
-    parser.add_argument("--name", help="Identify task name", required=True, type=str)
-    parser.add_argument("--data", help="Indicate the name of dataset", required=True, type=str)
-    parser.add_argument("--model", help="Indicate the name of model", required=True, type=str)
+    parser.add_argument("--name", "-n", help="Identify task name", required=True, type=str)
+    parser.add_argument("--data", "-d", help="Indicate the name of dataset", required=True, type=str)
+    parser.add_argument("--model", "-m", help="Indicate the name of model", required=True, type=str)
     # task phase indicate
-    parser.add_argument("--further_pretraining", help="Do further pretraining on given corpus (For Bert "
+    parser.add_argument("--further_pretraining", "-ftp", help="Do further pretraining on given corpus (For Bert "
                                                               "related model only)", action="store_true")
-    parser.add_argument("--fine_tuning", help="Do Fine Tuning on given training data (For Bert related model "
+    parser.add_argument("--fine_tuning", "-fit", help="Do Fine Tuning on given training data (For Bert related model "
                                                       "only", action="store_true")
-    parser.add_argument("--training", help="Do Training (For baseline model only", action="store_true")
-    parser.add_argument("--testing", help="Do Testing on given model", action="store_true")
+    parser.add_argument("--training", "-tr", help="Do Training (For baseline model only", action="store_true")
+    parser.add_argument("--testing", "-ev", help="Do Testing on given model", action="store_true")
     # custom settings
     parser.add_argument("--read_from_cache", help="Read data from cache file processed early",
                         action="store_true")
@@ -394,29 +500,13 @@ if __name__ == "__main__":
     parser.add_argument("--fit_ftp_path", help="Load args of further_pretrained Bert model", type=str, default=None)
     parser.add_argument("--test_model_path", help="Load model for testing, default'/root/autodl-nas/checkpoint/["
                                                   "--name].pb'", default=None)
-
+    print("Parsing arguments......")
     args = parser.parse_args()
-
-    if args.data not in dataset_dict:
-        raise ValueError("Dataset not found ({} is not in the dataset dict)".format(args.data))
-    if args.model not in model_dict:
-        raise ValueError("Model not found ({} is not in the model dict)".format(args.model))
-    if args.further_pretraining:
-        if args.model not in ["bert_linear", "bert_lstm"]:
-            raise ValueError("Further pretraining can only perform in Bert Models.")
-        further_pretraining(args.name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache)
-    if args.fine_tuning:
-        if args.model not in ["bert_linear", "bert_lstm"]:
-            raise ValueError("Fine tuning can only perform in Bert Models.")
-        fine_tuning(args.name, args.data, args.model, args.fit_ftp_path, args.fit_state_path, args.read_from_cache)
-    if args.training:
-        if args.model in ["bert_linear", "bert_lstm"]:
-            raise ValueError("Please use fine tuning instead of training for Bert Models.")
-        basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path, args.read_from_cache)
-    if args.testing:
-        if args.test_model_path is None:
-            model_path = '/root/autodl-nas/checkpoint/{}.pb'.format(args.name)
-        else:
-            model_path = args.test_model_path
-        evaluate(args.name, model_path, args.data, args.test_batch_size, args.model, args.read_from_cache)
+    ret, msg = valid(args)
+    if ret == 2:
+        raise ValueError(msg)
+    else:
+        print(msg)
+    print("Start Session.")
+    session(args)
 
