@@ -17,7 +17,7 @@ import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-push_message = True
+push_message = False
 
 model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm"}
 
@@ -456,6 +456,8 @@ def info(args):
 
 
 def session(args):
+    if args.alarm:
+        push_message = True
     if args.debug:
         datasets.debugging = True
     if args.further_pretraining:
@@ -469,7 +471,8 @@ def session(args):
                 ftp_path = "/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)
         else:
             ftp_path = args.fit_ftp_path
-        fine_tuning(args.name, args.data, args.fit_batch_size, args.model, ftp_path, args.fit_state_path, args.read_from_cache)
+        fine_tuning(args.name, args.data, args.fit_batch_size, args.model, ftp_path, args.fit_state_path,
+                    args.read_from_cache)
     if args.training:
         basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path,
                        args.read_from_cache)
@@ -511,7 +514,10 @@ if __name__ == "__main__":
     parser.add_argument("--fit_ftp_path", help="Load args of further_pretrained Bert model", type=str, default=None)
     parser.add_argument("--test_model_path", help="Load model for testing, default'/root/autodl-nas/checkpoint/["
                                                   "--name].pb'", default=None)
-    parser.add_argument("--debug", help="Debug Mode (Only read a small number of data from dataset", action="store_true")
+    parser.add_argument("--debug", help="Debug Mode (Only read a small number of data from dataset",
+                        action="store_true")
+    parser.add_argument("--alarm", help="Alarm when epochs of training done, or testing done. Send messages to Wechat",
+                        action="store_true")
     print("Parsing arguments......")
     args = parser.parse_args()
     ret, msg = valid(args)
