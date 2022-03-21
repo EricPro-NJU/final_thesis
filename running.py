@@ -403,6 +403,8 @@ def valid(args):
         save_to = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
         if os.path.exists(save_to):
             return 1, "WARNING: Training model {} exists. The newly trained model will overwritten!".format(save_to)
+    if not args.read_from_cache:
+        return 1, "WARNING: Data read from source file instead of cache. It may rewritten data in cache files!"
     return 0, "Parameter validation check pass"
 
 
