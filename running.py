@@ -507,6 +507,7 @@ if __name__ == "__main__":
         raise ValueError(msg)
     else:
         print(msg)
+    info(args)
     print("Start Session.")
     session(args)
 
