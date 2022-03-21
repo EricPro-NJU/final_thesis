@@ -501,9 +501,9 @@ if __name__ == "__main__":
     parser.add_argument("--read_from_cache", help="Read data from cache file processed early",
                         action="store_true")
     parser.add_argument("--ftp_batch_size", help="Batch size for further pretraining", type=int, default=32)
-    parser.add_argument("--fit_batch_size", help="Batch size for fine tuning", type=int, default=24)
+    parser.add_argument("--fit_batch_size", help="Batch size for fine tuning", type=int, default=16)
     parser.add_argument("--train_batch_size", help="Batch size for training", type=int, default=32)
-    parser.add_argument("--test_batch_size", help="Batch size for testing", type=int, default=24)
+    parser.add_argument("--test_batch_size", help="Batch size for testing", type=int, default=32)
     # load state_path
     parser.add_argument("--ftp_state_path", help="Load state of further_pretraining", type=str, default=None)
     parser.add_argument("--fit_state_path", help="Load state of fine_tuning", type=str, default=None)
