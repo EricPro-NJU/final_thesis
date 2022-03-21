@@ -467,7 +467,7 @@ def session(args):
                 ftp_path = "/root/autodl-nas/checkpoint/{}_FtP.pb".format(args.name)
         else:
             ftp_path = args.fit_ftp_path
-        fine_tuning(args.name, args.data, args.model, ftp_path, args.fit_state_path, args.read_from_cache)
+        fine_tuning(args.name, args.data, args.fit_batch_size, args.model, ftp_path, args.fit_state_path, args.read_from_cache)
     if args.training:
         basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path,
                        args.read_from_cache)
