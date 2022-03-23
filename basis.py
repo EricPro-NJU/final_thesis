@@ -61,10 +61,8 @@ class TextCNN(nn.Module):
         # input: [N, 1, seq_len, emb_size]
         height1 = (seq_len - kernel_size[0] + 1) // 2
         width1 = (emb_size - kernel_size[1] + 1) // 2
-        print(height1, width1)
         height2 = (height1 - kernel_size[0] + 1) // 2
         width2 = (width1 - kernel_size[1] + 1) // 2
-        print(height2, width2)
         self.cnn1 = nn.Sequential(
             nn.Conv2d(1, hidden_size, kernel_size),
             nn.ReLU(),
@@ -81,19 +79,13 @@ class TextCNN(nn.Module):
 
     def forward(self, inputs):
         emb = self.embedding(inputs)  # N * seq_len * emb_size
-        print(1, emb.shape)
         emb = emb.unsqueeze(dim=1)
-        print(2, emb.shape)
         context = self.cnn1(emb)
-        print(3, context.shape)
         context = self.cnn2(context)
-        print(4, context.shape)
         context = self.dropout(context)
         batch_size = context.shape[0]
         context = context.view(batch_size, -1)
-        print(5, context.shape)
         output = self.softmax(self.linear(context))
-        print(6, output.shape)
         return output
 
 
