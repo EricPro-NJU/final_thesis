@@ -30,11 +30,20 @@ dataset_dict = {
             "source": "/root/autodl-tmp/IMDB_corpus.txt",
             "token": "/root/autodl-tmp/IMDB_corpus_tokenized.txt",
             "index": "/root/autodl-tmp/IMDB_corpus_indexed.txt"
-        }
+        },
+        "num_class": 2
+    },
+    "Debugging": {
+        "train": {
+            "source": "D:/sample_data/source",
+            "token": "D:/sample_data/token",
+            "index": "D:/sample_data/index",
+            "mask": "D:/sample_data/mask",
+            "label": "D:/sample_data/label"
+        },
+        "num_class": 2
     }
 }
-
-
 
 
 def random_word(tokens, tokenizer):
@@ -100,6 +109,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     index_list = []
     mask_list = []
     label_list = []
+    length_list = []
 
     with open(data_path, "r", encoding="UTF-8-sig") as train_file:
         linereader = train_file.readlines()
@@ -107,7 +117,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
             num = eval(line[0])
             sentence = line[2:]
             data_list.append([num, sentence.strip()])
-            if debugging and i > 100:
+            if debugging and i > 10:
                 break
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -129,6 +139,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
         index_list.append(index)
         mask_list.append(mask)
         label_list.append(item[0])
+        length_list.append(tokens_len)
 
     if data_token_path is not None:
         with open(data_token_path, "w", encoding="UTF-8") as fp:
@@ -150,7 +161,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
             for item in label_list:
                 fp.write("{}\n".format(item))
 
-    return token_list, index_list, mask_list, label_list
+    return token_list, index_list, mask_list, label_list, length_list
 
 
 def separate_corpus(corpus_path, save_to=None):
@@ -200,7 +211,7 @@ def separate_corpus(corpus_path, save_to=None):
                         cache = None
             if (i + 1) % 2000 == 0:
                 print("Read data {} / {}".format(i + 1, file_len))
-            if debugging and i > 100:
+            if debugging and i > 10:
                 break
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
@@ -283,7 +294,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                 tokens_list.append(eval(line.strip()))
                 if (i + 1) % 10000 == 0:
                     print("Read data {} / {}".format(i + 1, file_len))
-                if debugging and i > 100:
+                if debugging and i > 10:
                     break
     if max_size > 128:
         max_size = 128
@@ -370,39 +381,44 @@ class TextDataSet(Dataset):
             index = []
             mask = []
             label = []
+            length = []
             with open(index_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 100:
+                    if debugging and i > 10:
                         break
                     index.append(eval(line))
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 100:
+                    if debugging and i > 10:
                         break
                     mask.append(eval(line))
+                    length.append(sum(eval(line)))
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 100:
+                    if debugging and i > 10:
                         break
                     label.append(eval(line))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
             self.label_idx = torch.LongTensor(label)
+            self.length_idx = torch.LongTensor(length)
         else:
-            token_list, index_list, mask_list, label_list = index_data(src_file, token_file, index_file, mask_file,
-                                                                       label_file)
+            token_list, index_list, mask_list, label_list, length_list = index_data(src_file, token_file, index_file,
+                                                                                    mask_file,
+                                                                                    label_file)
             self.input_idx = torch.LongTensor(index_list)  # num * seq_len
             self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
-            self.label_idx = torch.LongTensor(label_list)  # num * 2
+            self.label_idx = torch.LongTensor(label_list)  # num
+            self.length_idx = torch.LongTensor(length_list)  # num
 
     def __len__(self):
         return self.input_idx.shape[0]
 
     def __getitem__(self, idx):
-        return self.input_idx[idx], self.mask_idx[idx], self.label_idx[idx]
+        return self.input_idx[idx], self.mask_idx[idx], self.label_idx[idx], self.length_idx[idx]
 
     def log(self, msg):
         if self.log is None:
@@ -448,7 +464,7 @@ class TextCorpus(Dataset):
                     nextsen.append(temp[4])
                     if (i + 1) % 10000 == 0:
                         print("Reading data {} / {}".format(i + 1, file_size))
-                    if debugging and (i + 1) >= 100:
+                    if debugging and (i + 1) >= 10:
                         break
         else:
             inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
@@ -470,8 +486,6 @@ class TextCorpus(Dataset):
             print(msg)
         else:
             self.lg.log(msg)
-
-
 
 
 if __name__ == "__main__":

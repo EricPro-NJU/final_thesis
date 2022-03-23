@@ -127,19 +127,23 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     else:
         raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(trainloader)
+    num_class = dataset_dict[datasets]["num_class"]
     lg.log("Index Training Data Done.")
 
     # prepare model and set hyper params
     lg.log("Model Config......")
     if model_name == "textrnn":
-        model = TextRNN(512, 1024, 2).to(device)
-        lg.log("choosing Simple {}LSTM model.".format("bi-directional "))
+        model = TextRNN(512, 1024, num_class).to(device)
+        lg.log("choosing {}TextRNN model.".format("bi-directional "))
+    elif model_name == "textcnn":
+        model = TextCNN(512, 8, num_class, (5, 5)).to(device)
+        lg.log("choosing TextCNN model.")
     else:
         raise ValueError("No such model named {}.".format(model_name))
     model.train()
 
     init_epoch = 0
-    t_epoch = 4
+    t_epoch = 10
     lr = 1e-4
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -159,10 +163,11 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     for epoch in range(init_epoch, t_epoch):
         batch_num = 0
         total_loss = 0.0
-        for inputs, mask, label in trainloader:
+        for inputs, mask, label, length in trainloader:
             inputs = inputs.to(device)
             label = label.to(device)
-            output = model(inputs)
+            length = length.to(device)
+            output = model(inputs) if model_name == "textcnn" else output = model(inputs, length)
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             if (batch_num + 1) % 50 == 0:
@@ -215,18 +220,19 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     else:
         raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(trainloader)
+    num_class = dataset_dict[datasets]["num_class"]
     lg.log("Index Training Data Done.")
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
     if model_name == "bert_linear":
-        model = SimpleBert(512, 2).to(device)
+        model = SimpleBert(512, num_class).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
-        model = RecBert(512, 1024, 2).to(device)
+        model = RecBert(512, 1024, num_class).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
     else:
-        model = SimpleBert(512, 2).to(device)
+        model = SimpleBert(512, num_class).to(device)
         lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
         lg.log("choosing BERT + Linear model.")
     model.train()
@@ -258,7 +264,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     for epoch in range(init_epoch, t_epoch):
         batch_num = 0
         total_loss = 0.0
-        for inputs, mask, label in trainloader:
+        for inputs, mask, label, _ in trainloader:
             inputs = inputs.to(device)
             mask = mask.to(device)
             label = label.to(device)
@@ -314,20 +320,23 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     else:
         raise ValueError("No such dataset called {}".format(datasets))
     t_batch = len(testloader)
+    num_class = dataset_dict[datasets]["num_class"]
     lg.log("Index Testing Data Done.")
 
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
     if model_name == "bert_linear":
-        model = SimpleBert(512, 2).to(device)
+        model = SimpleBert(512, num_class).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
-        model = RecBert(512, 1024, 2).to(device)
+        model = RecBert(512, 1024, num_class).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
     elif model_name == "textrnn":
-        model = TextRNN(512, 1024, 2).to(device)
-        lg.log("choosing Simple {}LSTM model.".format("bi-directional "))
-
+        model = TextRNN(512, 1024, num_class).to(device)
+        lg.log("choosing {}TextRNN model.".format("bi-directional "))
+    elif model_name == "textcnn":
+        model = TextCNN(512, 8, num_class, (5, 5)).to(device)
+        lg.log("choosing TextCNN model.")
     else:
         model = SimpleBert(512, 2).to(device)
         lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
@@ -344,11 +353,13 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
 
     batch_num = 0
     with torch.no_grad():
-        for inputs, mask, label in testloader:
+        for inputs, mask, label, length in testloader:
             inputs = inputs.to(device)
             mask = mask.to(device)
             label = label.to(device)
-            output = model(inputs, mask)
+            length = length.to(device)
+            output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
+                (model(inputs) if model_name == "textcnn" else model(inputs, length))
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             val_loss += loss.item()
@@ -404,7 +415,8 @@ def valid(args):
         if os.path.exists(save_to):
             return 1, "WARNING: Training model {} exists. The newly trained model will overwritten!".format(save_to)
     if not args.read_from_cache:
-        return 1, "WARNING: Data read from source file instead of cache. It may rewritten data in cache files!"
+        return 1, "WARNING: Data read from source file instead of cache. It may rewritten data in cache files! We " \
+                  "urge you to use read_from_cache modes especially in debugging mode! "
     return 0, "Parameter validation check pass"
 
 
