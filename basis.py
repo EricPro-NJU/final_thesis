@@ -38,7 +38,7 @@ class TextRNN(nn.Module):
         :return: N * output_size
         '''
         emb = self.embedding(inputs)
-        emb = pack_padded_sequence(emb, length, batch_first=True, enforce_sorted=False)
+        emb = pack_padded_sequence(emb, length.to("cpu"), batch_first=True, enforce_sorted=False)
         context, (hidden, cell) = self.lstm(emb)
         hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
         #  select the final hidden state of the last layer [N, hidden*D]
