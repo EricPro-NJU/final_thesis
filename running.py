@@ -167,7 +167,13 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
             inputs = inputs.to(device)
             label = label.to(device)
             length = length.to(device)
-            output = model(inputs) if model_name == "textcnn" else output = model(inputs, length)
+            # output = model(inputs) if model_name == "textcnn" else output = model(inputs, length)
+            if model_name == "textcnn":
+                output = model(inputs)
+            elif model_name == "textrnn":
+                output = model(inputs, length)
+            else:
+                raise SystemError("Oh!")
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             if (batch_num + 1) % 50 == 0:
@@ -358,8 +364,16 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             mask = mask.to(device)
             label = label.to(device)
             length = length.to(device)
-            output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
-                (model(inputs) if model_name == "textcnn" else model(inputs, length))
+            # output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
+            #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
+            if model_name in ["bert_linear", "bert_lstm"]:
+                output = model(inputs, mask)
+            elif model_name == "textcnn":
+                output = model(inputs)
+            elif model_name == "textrnn":
+                output = model(inputs, length)
+            else:
+                raise SystemError("Oh")
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             val_loss += loss.item()
