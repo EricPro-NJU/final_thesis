@@ -59,19 +59,18 @@ def getPositionalEmbedding(batch_size, seq_len, d_model):
 
 class Configuration:
     def __init__(self):
-        self.d_model = 512  # arbitrary
+        self.d_model = 768
         self.src_len = 512
         self.tgt_len = 512
         self.src_vocab_size = 30522
         self.tgt_vocab_size = 30522
-        self.batch_size = 16  # arbitrary
-        self.dimq = 64  # arbitrary
-        self.dimv = 64  # arbitrary
-        self.n_heads = 8  # arbitrary
-        self.d_hidden = 2048  # arbitrary
-        self.n_layer = 6  # arbitrary
-        self.epoch_num = 4  # arbitrary
-        self.code_dict = {"pad": 0, "start": 1, "end": 2}
+        self.batch_size = 16  # to_set
+        self.dimq = 64
+        self.dimv = 64
+        self.n_heads = 12
+        self.d_hidden = 1024
+        self.n_layer = 12
+        self.code_dict = {"pad": 0}
 
 
 class MultiheadAttention(nn.Module):

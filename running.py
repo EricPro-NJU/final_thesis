@@ -165,7 +165,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
 
     init_epoch = 0
     t_epoch = 10
-    lr = 1e-4
+    lr = 0.1
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     if state_path is not None:
@@ -516,6 +516,7 @@ def info(args):
 
 def session(args):
     if args.alarm:
+        global push_message
         push_message = True
     if args.debug:
         datasets.debugging = True
