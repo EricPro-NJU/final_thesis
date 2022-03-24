@@ -166,7 +166,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     model.train()
 
     init_epoch = 0
-    t_epoch = 20
+    t_epoch = 30
     lr = 1e-5
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
