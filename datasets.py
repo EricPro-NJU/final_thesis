@@ -389,7 +389,7 @@ class TextDataSet(Dataset):
                     if debugging and i > 10:
                         break
                     index.append(eval(line))
-                    if (i + 1) % 10000 == 0:
+                    if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
                         self.log("Reading cache file 1 / 3, Data {} / {}".format(i+1, len(linereader)))
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
@@ -398,7 +398,7 @@ class TextDataSet(Dataset):
                         break
                     mask.append(eval(line))
                     length.append(sum(eval(line)))
-                    if (i + 1) % 10000 == 0:
+                    if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
                         self.log("Reading cache file 2 / 3, Data {} / {}".format(i+1, len(linereader)))
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
@@ -406,7 +406,7 @@ class TextDataSet(Dataset):
                     if debugging and i > 10:
                         break
                     label.append(eval(line))
-                    if (i + 1) % 10000 == 0:
+                    if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
                         self.log("Reading cache file 3 / 3, Data {} / {}".format(i+1, len(linereader)))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
@@ -466,7 +466,7 @@ class TextCorpus(Dataset):
                     attn.append(temp[2])
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
-                    if (i + 1) % 10000 == 0:
+                    if (i + 1) % 10000 == 0 or (i + 1) == file_size:
                         self.log("Reading cache file 1 / 1, data {} / {}".format(i + 1, file_size))
                     if debugging and (i + 1) >= 10:
                         break

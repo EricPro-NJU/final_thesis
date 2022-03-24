@@ -97,7 +97,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
             lm = lm.to(device)
             nxtsen = nxtsen.to(device)
             loss = model(inputs, ttype, mask, lm, nxtsen)
-            if (batch_num + 1) % 50 == 0:
+            if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
                 lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
                                                                         loss.item()))
             total_loss += loss.item()
@@ -197,7 +197,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
                 raise SystemError("Oh!")
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
-            if (batch_num + 1) % 50 == 0:
+            if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
                 lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
                                                                         loss.item()))
             total_loss += loss.item()
@@ -298,7 +298,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
             output = model(inputs, mask)
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
-            if (batch_num + 1) % 50 == 0:
+            if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
                 lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
                                                                         loss.item()))
             total_loss += loss.item()
@@ -409,7 +409,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
                 tf_matrix[answer[i]][prediction[i]] += 1
                 label_count[answer[i]] += 1
                 predict_count[answer[i]] += 1
-            if (batch_num + 1) % 50 == 0:
+            if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
                 lg.log("Testing {} / {} done.".format(batch_num + 1, t_batch))
             batch_num += 1
 
