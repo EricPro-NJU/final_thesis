@@ -378,6 +378,7 @@ class TextDataSet(Dataset):
         mask_file = dataset_dict[name][split]["mask"]
         label_file = dataset_dict[name][split]["label"]
         if read_from_cache:
+            self.log("Reading data from cache.")
             index = []
             mask = []
             label = []
@@ -388,6 +389,8 @@ class TextDataSet(Dataset):
                     if debugging and i > 10:
                         break
                     index.append(eval(line))
+                    if (i + 1) % 10000 == 0:
+                        self.log("Reading cache file 1 / 3, Data {} / {}".format(i+1, len(linereader)))
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
@@ -395,12 +398,16 @@ class TextDataSet(Dataset):
                         break
                     mask.append(eval(line))
                     length.append(sum(eval(line)))
+                    if (i + 1) % 10000 == 0:
+                        self.log("Reading cache file 2 / 3, Data {} / {}".format(i+1, len(linereader)))
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
                     if debugging and i > 10:
                         break
                     label.append(eval(line))
+                    if (i + 1) % 10000 == 0:
+                        self.log("Reading cache file 3 / 3, Data {} / {}".format(i+1, len(linereader)))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
             self.label_idx = torch.LongTensor(label)
@@ -421,7 +428,7 @@ class TextDataSet(Dataset):
         return self.input_idx[idx], self.mask_idx[idx], self.label_idx[idx], self.length_idx[idx]
 
     def log(self, msg):
-        if self.log is None:
+        if self.lg is None:
             print(msg)
         else:
             self.lg.log(msg)
@@ -443,7 +450,7 @@ class TextCorpus(Dataset):
         token_file = dataset_dict[name][split]["token"]
         index_file = dataset_dict[name][split]["index"]
         if read_from_cache:
-            print("Reading data from cache file.")
+            self.log("Reading data from cache file.")
             inputs = []
             tokentype = []
             attn = []
@@ -452,9 +459,6 @@ class TextCorpus(Dataset):
             with open(index_file, "r", encoding="UTF-8") as fp:
                 lines = fp.readlines()
                 file_size = len(lines)
-                print("{} data to be read.".format(file_size))
-                if debugging:
-                    print("Debugging mode")
                 for i, line in enumerate(lines):
                     temp = eval(line.strip())
                     inputs.append(temp[0])
@@ -463,7 +467,7 @@ class TextCorpus(Dataset):
                     masklm.append(temp[3])
                     nextsen.append(temp[4])
                     if (i + 1) % 10000 == 0:
-                        print("Reading data {} / {}".format(i + 1, file_size))
+                        self.log("Reading cache file 1 / 1, data {} / {}".format(i + 1, file_size))
                     if debugging and (i + 1) >= 10:
                         break
         else:
@@ -482,7 +486,7 @@ class TextCorpus(Dataset):
             idx]
 
     def log(self, msg):
-        if self.log is None:
+        if self.lg is None:
             print(msg)
         else:
             self.lg.log(msg)
