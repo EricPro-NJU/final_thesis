@@ -405,7 +405,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             answer = label.view(-1)
             val_total += prediction.shape[0]
             val_cor += prediction[prediction == answer].shape[0]
-            for i in prediction.shape[0]:
+            for i in range(prediction.shape[0]):
                 tf_matrix[answer[i]][prediction[i]] += 1
                 label_count[answer[i]] += 1
                 predict_count[answer[i]] += 1
