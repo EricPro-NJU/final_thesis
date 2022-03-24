@@ -30,8 +30,8 @@ class Log:
                                                                 time.strftime("%Y%m%d%H%M%S", time.localtime()))
         self.log_num = 0
 
-    def log(self, text, mute=False, discard=False, message=False):
-        log_text = "{}\t{}".format(time.strftime("LOG: %Y-%m-%d %H:%M:%S", time.localtime()), text)
+    def log(self, text, mute=False, discard=False, message=False, info=True):
+        log_text = "{}\t{}".format(time.strftime("LOG: %Y-%m-%d %H:%M:%S", time.localtime()), text) if info else text
         if not discard:
             self.log_list.append("{}\n".format(log_text))
             self.log_num += 1

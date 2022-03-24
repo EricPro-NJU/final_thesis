@@ -22,6 +22,27 @@ push_message = False
 model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm"}
 
 
+def f1_count(tf_matrix, label_count, prediction_count, lg):
+    num_class = label_count.shape[0]
+    lg.log("TF MATRIX TABLE\n{}".format(tf_matrix))
+    tp = torch.zeros([num_class])
+    fp = torch.zeros([num_class])
+    fn = torch.zeros([num_class])
+    for i in range(num_class):
+        tp[i] = tf_matrix[i][i]
+        fp[i] = prediction_count[i] - tp[i]
+        fn[i] = label_count[i] - tp[i]
+    p = tp / (tp + fp)
+    r = tp / (tp + fn)
+    macro_p = p.mean()
+    macro_r = r.mean()
+    macro_f1 = (2 * macro_p * macro_r) / (macro_p + macro_r)
+    micro_p = tp.mean() / (tp.mean() + fp.mean())
+    micro_r = tp.mean() / (tp.mean() + fn.mean())
+    micro_f1 = (2 * micro_p * micro_r) / (micro_p + micro_r)
+    return macro_f1.item(), micro_f1.item()
+
+
 def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None, read_from_cache="False"):
     # datasets should be read using Dataset class into Dataloader
     # use uncased BERT pretraining model to further pretrain the model
@@ -356,7 +377,9 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     val_loss = 0.0
     val_total = 0
     val_cor = 0
-
+    tf_matrix = torch.zeros([num_class, num_class])
+    label_count = torch.zeros([num_class])
+    predict_count = torch.zeros([num_class])
     batch_num = 0
     with torch.no_grad():
         for inputs, mask, label, length in testloader:
@@ -382,14 +405,24 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             answer = label.view(-1)
             val_total += prediction.shape[0]
             val_cor += prediction[prediction == answer].shape[0]
+            for i in prediction.shape[0]:
+                tf_matrix[answer[i]][prediction[i]] += 1
+                label_count[answer[i]] += 1
+                predict_count[answer[i]] += 1
             if (batch_num + 1) % 50 == 0:
                 lg.log("Testing {} / {} done.".format(batch_num + 1, t_batch))
             batch_num += 1
 
     val_loss = val_loss / t_batch
     acc = val_cor / val_total
-    lg.log("Test Result: {} / {} correct, {} accuracy, {} average loss.".format(val_cor, val_total, acc, val_loss),
+    macro_f1, micro_f1 = f1_count(tf_matrix, label_count, predict_count, lg)
+    lg.log("Test Result: {} / {} correct, {} accuracy, {} average loss, {} macro_f1, {} micro_f1".format(val_cor,
+                                                                                                         val_total, acc,
+                                                                                                         val_loss,
+                                                                                                         macro_f1,
+                                                                                                         micro_f1),
            message=push_message)
+
     lg.writelog()
 
 
