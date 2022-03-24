@@ -91,12 +91,19 @@ class TextCNN(nn.Module):
 
 
 class TransformerClassifier(nn.Module):
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, num_class):
         super(TransformerClassifier, self).__init__()
         conf = Configuration()
         conf.batch_size = batch_size
         # N * src_len  -->  N * src_len * d_model
         self.encoder = TransformerEncoder(conf)
+        # N * d_model  -->  N * num_class
+        self.dropout = nn.Dropout(p=0.1)
+        self.linear = nn.Linear(conf.d_model, num_class)
+    def forward(self, inputs):
+        context = self.encoder(inputs)
+        output = self.linear(self.dropout(context))
+        return output
 
 class BasicTokenizer:
     """

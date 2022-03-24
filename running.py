@@ -9,7 +9,7 @@ from pytorch_pretrained_bert import BertAdam, BertForPreTraining
 from datasets import TextDataSet, TextCorpus, dataset_dict
 import datasets
 from bert import SimpleBert, RecBert
-from basis import TextRNN, TextCNN
+from basis import TextRNN, TextCNN, TransformerClassifier
 import sys
 import argparse
 import os
@@ -158,13 +158,16 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     elif model_name == "textcnn":
         model = TextCNN(512, 8, num_class, (5, 5)).to(device)
         lg.log("choosing TextCNN model.")
+    elif model_name == "transformer":
+        model = TransformerClassifier(batch_size, num_class).to(device)
+        lg.log("choosing Transformer model.")
     else:
         raise ValueError("No such model named {}.".format(model_name))
     model.train()
 
     init_epoch = 0
-    t_epoch = 20
-    lr = 1e-4
+    t_epoch = 10
+    lr = 1e-3
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     if state_path is not None:
@@ -188,7 +191,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
             label = label.to(device)
             length = length.to(device)
             # output = model(inputs) if model_name == "textcnn" else output = model(inputs, length)
-            if model_name == "textcnn":
+            if model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
             elif model_name == "textrnn":
                 output = model(inputs, length)
@@ -363,10 +366,11 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     elif model_name == "textcnn":
         model = TextCNN(512, 8, num_class, (5, 5)).to(device)
         lg.log("choosing TextCNN model.")
+    elif model_name == "transformer":
+        model = TransformerClassifier(batch_size, num_class).to(device)
+        lg.log("choosing transformer classifier.")
     else:
-        model = SimpleBert(512, 2).to(device)
-        lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
-        lg.log("choosing BERT + Linear model.")
+        raise ValueError("No such model named {}".format(model_name))
     model.load_state_dict(torch.load(model_path))
     model.eval()
     criterion = nn.CrossEntropyLoss()
@@ -390,7 +394,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
             if model_name in ["bert_linear", "bert_lstm"]:
                 output = model(inputs, mask)
-            elif model_name == "textcnn":
+            elif model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
             elif model_name == "textrnn":
                 output = model(inputs, length)
