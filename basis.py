@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import nltk
 import nltk.tokenize as tokenizer
 from nltk.corpus import stopwords
+from transformer import TransformerEncoder, Configuration
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 uncased_bert_vocab_size = 30522
@@ -88,6 +89,14 @@ class TextCNN(nn.Module):
         output = self.softmax(self.linear(context))
         return output
 
+
+class TransformerClassifier(nn.Module):
+    def __init__(self, batch_size):
+        super(TransformerClassifier, self).__init__()
+        conf = Configuration()
+        conf.batch_size = batch_size
+        # N * src_len  -->  N * src_len * d_model
+        self.encoder = TransformerEncoder(conf)
 
 class BasicTokenizer:
     """

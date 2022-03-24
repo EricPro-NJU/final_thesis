@@ -9,7 +9,6 @@ from pytorch_pretrained_bert import BertAdam, BertForPreTraining
 from datasets import TextDataSet, TextCorpus, dataset_dict
 import datasets
 from bert import SimpleBert, RecBert
-from transformer import TransformerEncoder
 from basis import TextRNN, TextCNN
 import sys
 import argparse
@@ -164,8 +163,8 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     model.train()
 
     init_epoch = 0
-    t_epoch = 10
-    lr = 0.1
+    t_epoch = 20
+    lr = 1e-4
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     if state_path is not None:
