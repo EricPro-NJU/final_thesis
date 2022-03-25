@@ -151,7 +151,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
                 num = eval(line[0])
                 sentence = line[2:]
                 data_list.append([num, sentence.strip()])
-                if debugging and i > 10:
+                if debugging and i > 500:
                     break
                 if (i + 1) % 10000 == 0:
                     print("Read Data {} / {}".format(i+1, len(linereader)))
@@ -161,7 +161,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
                 num = item['label']
                 sentence = item['text'].strip()
                 data_list.append([num, sentence])
-                if debugging and i > 10:
+                if debugging and i > 500:
                     break
                 if (i + 1) % 10000 == 0:
                     print("Read Data {} / {}".format(i+1, len(reader)))
@@ -260,7 +260,7 @@ def separate_corpus(corpus_path, save_to=None):
                         cache = None
             if (i + 1) % 2000 == 0:
                 print("Read data {} / {}".format(i + 1, file_len))
-            if debugging and i > 10:
+            if debugging and i > 500:
                 break
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
@@ -343,7 +343,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
                 tokens_list.append(eval(line.strip()))
                 if (i + 1) % 10000 == 0:
                     print("Read data {} / {}".format(i + 1, file_len))
-                if debugging and i > 10:
+                if debugging and i > 500:
                     break
     if max_size > 128:
         max_size = 128
@@ -437,7 +437,7 @@ class TextDataSet(Dataset):
             with open(index_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 10:
+                    if debugging and i > 500:
                         break
                     index.append(eval(line))
                     if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
@@ -445,7 +445,7 @@ class TextDataSet(Dataset):
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 10:
+                    if debugging and i > 500:
                         break
                     mask.append(eval(line))
                     length.append(sum(eval(line)))
@@ -454,7 +454,7 @@ class TextDataSet(Dataset):
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
-                    if debugging and i > 10:
+                    if debugging and i > 500:
                         break
                     label.append(eval(line))
                     if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
@@ -519,7 +519,7 @@ class TextCorpus(Dataset):
                     nextsen.append(temp[4])
                     if (i + 1) % 10000 == 0 or (i + 1) == file_size:
                         self.log("Reading cache file 1 / 1, data {} / {}".format(i + 1, file_size))
-                    if debugging and (i + 1) >= 10:
+                    if debugging and (i + 1) >= 500:
                         break
         else:
             inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
