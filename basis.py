@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import nltk
 import nltk.tokenize as tokenizer
 from nltk.corpus import stopwords
-from transformer import TransformerEncoder, Configuration
+from transformer import TransformerEncoder, Configuration, getPadMask
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 uncased_bert_vocab_size = 30522
@@ -95,13 +95,15 @@ class TransformerClassifier(nn.Module):
         super(TransformerClassifier, self).__init__()
         conf = Configuration()
         conf.batch_size = batch_size
+        self.conf = conf
         # N * src_len  -->  N * src_len * d_model
         self.encoder = TransformerEncoder(conf)
         # N * d_model  -->  N * num_class
         self.dropout = nn.Dropout(p=0.1)
         self.linear = nn.Linear(conf.d_model, num_class)
     def forward(self, inputs):
-        context = self.encoder(inputs)
+        encoder_mask = getPadMask(inputs, inputs, self.conf.code_dict["pad"])
+        context = self.encoder(inputs, encoder_mask)
         context = context[:, 0, :]
         output = self.linear(self.dropout(context))
         return output
