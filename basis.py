@@ -102,6 +102,7 @@ class TransformerClassifier(nn.Module):
         self.linear = nn.Linear(conf.d_model, num_class)
     def forward(self, inputs):
         context = self.encoder(inputs)
+        context = context[:, 0, :]
         output = self.linear(self.dropout(context))
         return output
 
