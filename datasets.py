@@ -152,6 +152,8 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
                 data_list.append([num, sentence.strip()])
                 if debugging and i > 10:
                     break
+                if (i + 1) % 10000 == 0:
+                    print("Read Data {} / {}".format(i+1, len(linereader)))
         elif data_type == 'json':
             reader = json.load(train_file)
             for i, item in enumerate(reader):
@@ -160,10 +162,12 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
                 data_list.append([num, sentence])
                 if debugging and i > 10:
                     break
+                if (i + 1) % 10000 == 0:
+                    print("Read Data {} / {}".format(i+1, len(reader)))
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-    for item in data_list:
+    for i, item in enumerate(data_list):
         tokens = tokenizer.tokenize(item[1])
         tokens_len = len(tokens)
         if tokens_len > 510:
@@ -181,6 +185,9 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
         mask_list.append(mask)
         label_list.append(item[0])
         length_list.append(tokens_len)
+        if (i + 1) % 10000 == 0:
+            print("Processed Data {} / {}".format(i + 1, len(data_list)))
+
 
     if data_token_path is not None:
         with open(data_token_path, "w", encoding="UTF-8") as fp:
