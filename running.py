@@ -159,7 +159,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
         model = TextCNN(512, 8, num_class, (5, 5)).to(device)
         lg.log("choosing TextCNN model.")
     elif model_name == "transformer":
-        model = TransformerClassifier(batch_size, num_class).to(device)
+        model = TransformerClassifier(num_class).to(device)
         lg.log("choosing Transformer model.")
     else:
         raise ValueError("No such model named {}.".format(model_name))

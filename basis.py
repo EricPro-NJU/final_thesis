@@ -91,10 +91,9 @@ class TextCNN(nn.Module):
 
 
 class TransformerClassifier(nn.Module):
-    def __init__(self, batch_size, num_class):
+    def __init__(self, num_class):
         super(TransformerClassifier, self).__init__()
         conf = Configuration()
-        conf.batch_size = batch_size
         self.conf = conf
         # N * src_len  -->  N * src_len * d_model
         self.encoder = TransformerEncoder(conf)

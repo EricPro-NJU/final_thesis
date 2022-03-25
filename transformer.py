@@ -64,7 +64,6 @@ class Configuration:
         self.tgt_len = 512
         self.src_vocab_size = 30522
         self.tgt_vocab_size = 30522
-        self.batch_size = 16  # to_set
         self.dimq = 64
         self.dimv = 64
         self.n_heads = 12
@@ -156,12 +155,9 @@ class TransformerEncoder(nn.Module):
         :param input_seq:  N * src_len
         :return: N * src_len * d_model
         """
-        print(input_seq.shape)
-        print(pad_mask.shape)
+        batch_size = input_seq.shape[0]
         wemb = self.word_emb(input_seq)
-        print(wemb.shape)
-        pemb = getPositionalEmbedding(self.conf.batch_size, self.conf.src_len, self.conf.d_model).cuda()
-        print(pemb.shape)
+        pemb = getPositionalEmbedding(batch_size, self.conf.src_len, self.conf.d_model).cuda()
         encoder_output = wemb + pemb
         # encoder_multiselfattn_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         for layer in self.layers:
@@ -205,8 +201,9 @@ class TransformerDecoder(nn.Module):
         :param encoder_output:  N * src_len * d_model
         :return:  N * tgt_len * d_model
         """
+        batch_size = input_seq.shape[0]
         wemb = self.word_emb(input_seq)
-        pemb = getPositionalEmbedding(self.conf.batch_size, self.conf.tgt_len, self.conf.d_model).cuda()
+        pemb = getPositionalEmbedding(batch_size, self.conf.tgt_len, self.conf.d_model).cuda()
         # pad_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         # dec_mask = getDecoderMask(input_seq)
         # cross_mask = getPadMask(input_seq, encoder_output, self.conf.code_dict["pad"])
