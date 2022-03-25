@@ -166,10 +166,15 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     model.train()
 
     init_epoch = 0
-    t_epoch = 5
-    lr = 5e-5
+    epoch_dict = {'textrnn': 10, 'textcnn': 30, 'transformer': 10}
+    lr_dict = {'textrnn': 1e-3, 'textcnn': 1e-5, 'transformer': 1e-4}
+    t_epoch = epoch_dict[model_name]
+    lr = lr_dict[model_name]
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    if model_name in ["textrnn", "textcnn"]:
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+    else:
+        optimizer = BertAdam(model.parameters(), lr=lr, warmup=0.04, b2=0.9998, e=1e-9, t_total=t_batch*t_epoch)
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
