@@ -1,3 +1,5 @@
+import json
+
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -14,6 +16,8 @@ dataset_dict = {
     "IMDB": {
         "train": {
             "source": "/root/autodl-tmp/IMDBtrain.csv",
+            "source_type": "csv",
+            "source_encoding": "UTF-8-sig",
             "token": "/root/autodl-tmp/IMDBtrain_token.txt",
             "index": "/root/autodl-tmp/IMDBtrain_index.txt",
             "mask": "/root/autodl-tmp/IMDBtrain_mask.txt",
@@ -21,6 +25,8 @@ dataset_dict = {
         },
         "test": {
             "source": "/root/autodl-tmp/IMDBtest.csv",
+            "source_type": "csv",
+            "source_encoding": "UTF-8-sig",
             "token": "/root/autodl-tmp/IMDBtest_token.txt",
             "index": "/root/autodl-tmp/IMDBtest_index.txt",
             "mask": "/root/autodl-tmp/IMDBtest_mask.txt",
@@ -28,10 +34,31 @@ dataset_dict = {
         },
         "corpus": {
             "source": "/root/autodl-tmp/IMDB_corpus.txt",
+            "source_encoding": "UTF-8-sig",
             "token": "/root/autodl-tmp/IMDB_corpus_tokenized.txt",
             "index": "/root/autodl-tmp/IMDB_corpus_indexed.txt"
         },
         "num_class": 2
+    },
+    "Yelp": {
+        "train": {
+            "source": "/root/autodl-tmp/Yelptrain.json",
+            "source_type": "json",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Yelptrain_token.txt",
+            "index": "/root/autodl-tmp/Yelptrain_index.txt",
+            "mask": "/root/autodl-tmp/Yelptrain_mask.txt",
+            "label": "/root/autodl-tmp/Yelptrain_label.txt"
+        },
+        "test": {
+            "source": "/root/autodl-tmp/Yelptest.json",
+            "source_type": "json",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Yelptest_token.txt",
+            "index": "/root/autodl-tmp/Yelptest_index.txt",
+            "mask": "/root/autodl-tmp/Yelptest_mask.txt",
+            "label": "/root/autodl-tmp/Yelptest_label.txt"
+        }
     },
     "Debugging": {
         "train": {
@@ -89,11 +116,16 @@ def random_word(tokens, tokenizer):
     return tokens, output_label
 
 
-def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_path=None, data_label_path=None):
+def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_path=None, data_label_path=None,
+               data_type="csv", data_encoding="UTF-8"):
     '''
     ====================SOURCE DATA FILE FORMAT==========================
+    IMDB:
     1. one data for a line
     2. first label (indicated by a single number), then a whitespace or tab, then the whole sentence
+    Yelp:
+    1. json file
+    2. with star, label, text attributes
     =====================================================================
     Read data from file, and save tokens, indexes, mask if necessary
     :param data_path(input_path):
@@ -111,14 +143,23 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     label_list = []
     length_list = []
 
-    with open(data_path, "r", encoding="UTF-8-sig") as train_file:
-        linereader = train_file.readlines()
-        for i, line in enumerate(linereader):
-            num = eval(line[0])
-            sentence = line[2:]
-            data_list.append([num, sentence.strip()])
-            if debugging and i > 10:
-                break
+    with open(data_path, "r", encoding=data_encoding) as train_file:
+        if data_type == 'csv':
+            linereader = train_file.readlines()
+            for i, line in enumerate(linereader):
+                num = eval(line[0])
+                sentence = line[2:]
+                data_list.append([num, sentence.strip()])
+                if debugging and i > 10:
+                    break
+        elif data_type == 'json':
+            reader = json.load(train_file)
+            for i, item in enumerate(reader):
+                num = item['label']
+                sentence = item['text'].strip()
+                data_list.append([num, sentence])
+                if debugging and i > 10:
+                    break
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -377,6 +418,8 @@ class TextDataSet(Dataset):
         index_file = dataset_dict[name][split]["index"]
         mask_file = dataset_dict[name][split]["mask"]
         label_file = dataset_dict[name][split]["label"]
+        src_type = dataset_dict[name][split]["source_type"]
+        encoding = dataset_dict[name][split]["source_encoding"]
         if read_from_cache:
             self.log("Reading data from cache.")
             index = []
@@ -390,7 +433,7 @@ class TextDataSet(Dataset):
                         break
                     index.append(eval(line))
                     if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
-                        self.log("Reading cache file 1 / 3, Data {} / {}".format(i+1, len(linereader)))
+                        self.log("Reading cache file 1 / 3, Data {} / {}".format(i + 1, len(linereader)))
             with open(mask_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
@@ -399,7 +442,7 @@ class TextDataSet(Dataset):
                     mask.append(eval(line))
                     length.append(sum(eval(line)))
                     if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
-                        self.log("Reading cache file 2 / 3, Data {} / {}".format(i+1, len(linereader)))
+                        self.log("Reading cache file 2 / 3, Data {} / {}".format(i + 1, len(linereader)))
             with open(label_file, "r", encoding="UTF-8") as fp:
                 linereader = fp.readlines()
                 for i, line in enumerate(linereader):
@@ -407,7 +450,7 @@ class TextDataSet(Dataset):
                         break
                     label.append(eval(line))
                     if (i + 1) % 10000 == 0 or (i + 1) == len(linereader):
-                        self.log("Reading cache file 3 / 3, Data {} / {}".format(i+1, len(linereader)))
+                        self.log("Reading cache file 3 / 3, Data {} / {}".format(i + 1, len(linereader)))
             self.input_idx = torch.LongTensor(index)
             self.mask_idx = torch.LongTensor(mask)
             self.label_idx = torch.LongTensor(label)
@@ -415,7 +458,7 @@ class TextDataSet(Dataset):
         else:
             token_list, index_list, mask_list, label_list, length_list = index_data(src_file, token_file, index_file,
                                                                                     mask_file,
-                                                                                    label_file)
+                                                                                    label_file, src_type, encoding)
             self.input_idx = torch.LongTensor(index_list)  # num * seq_len
             self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
             self.label_idx = torch.LongTensor(label_list)  # num
@@ -502,7 +545,4 @@ if __name__ == "__main__":
     print(output_tokens)
     print(output_label)
     '''
-    corpus_path = "/root/autodl-tmp/IMDB_corpus.txt"
-    token_path = "/root/autodl-tmp/IMDB_corpus_tokenized.txt"
-    index_path = "/root/autodl-tmp/IMDB_corpus_indexed.txt"
-    inputs, token_type, attn_mask, masked_lm, next_sentence = index_corpus(None, token_path, index_path)
+    dataset = TextDataSet("Yelp", "train", False, None)
