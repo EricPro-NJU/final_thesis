@@ -156,8 +156,12 @@ class TransformerEncoder(nn.Module):
         :param input_seq:  N * src_len
         :return: N * src_len * d_model
         """
+        print(input_seq.shape)
+        print(pad_mask.shape)
         wemb = self.word_emb(input_seq)
+        print(wemb.shape)
         pemb = getPositionalEmbedding(self.conf.batch_size, self.conf.src_len, self.conf.d_model).cuda()
+        print(pemb.shape)
         encoder_output = wemb + pemb
         # encoder_multiselfattn_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         for layer in self.layers:
