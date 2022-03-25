@@ -59,16 +59,16 @@ def getPositionalEmbedding(batch_size, seq_len, d_model):
 
 class Configuration:
     def __init__(self):
-        self.d_model = 768
+        self.d_model = 512
         self.src_len = 512
         self.tgt_len = 512
         self.src_vocab_size = 30522
         self.tgt_vocab_size = 30522
         self.dimq = 64
         self.dimv = 64
-        self.n_heads = 12
-        self.d_hidden = 1024
-        self.n_layer = 12
+        self.n_heads = 8
+        self.d_hidden = 2048
+        self.n_layer = 6
         self.code_dict = {"pad": 0}
 
 
