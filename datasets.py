@@ -58,7 +58,8 @@ dataset_dict = {
             "index": "/root/autodl-tmp/Yelptest_index.txt",
             "mask": "/root/autodl-tmp/Yelptest_mask.txt",
             "label": "/root/autodl-tmp/Yelptest_label.txt"
-        }
+        },
+        "num_class": 2
     },
     "Debugging": {
         "train": {
