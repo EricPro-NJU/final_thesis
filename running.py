@@ -367,7 +367,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
         model = TextCNN(512, 8, num_class, (5, 5)).to(device)
         lg.log("choosing TextCNN model.")
     elif model_name == "transformer":
-        model = TransformerClassifier(batch_size, num_class).to(device)
+        model = TransformerClassifier(num_class).to(device)
         lg.log("choosing transformer classifier.")
     else:
         raise ValueError("No such model named {}".format(model_name))
