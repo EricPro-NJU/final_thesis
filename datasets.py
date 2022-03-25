@@ -552,4 +552,4 @@ if __name__ == "__main__":
     print(output_tokens)
     print(output_label)
     '''
-    dataset = TextDataSet("Yelp", "train", False, None)
+    dataset = TextDataSet("Yelp", "test", False, None)
