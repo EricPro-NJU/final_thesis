@@ -600,4 +600,10 @@ if __name__ == "__main__":
         print(msg)
     info(args)
     print("Start Session.")
-    session(args)
+    try:
+        session(args)
+    except Exception as e:
+        print("\033[33mYour session has caused an exception, Please check and modify your settings.\033[0m")
+        print("\033[33mException Info: {}\033[0m".format(e))
+    else:
+        print("Session terminated smoothly.")
