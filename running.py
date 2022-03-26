@@ -73,6 +73,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     warmup = 0.1
     t_total = 1e5
     optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
+    step = 0
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
@@ -87,9 +88,15 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     start_time = time.time()
     last_time = start_time
     for epoch in range(init_epoch, t_epoch):
+        if step > t_total:
+            lg.log("Reached step limit, epoch skipped.")
+            break
         batch_num = 0
         total_loss = 0.0
         for inputs, ttype, mask, lm, nxtsen in dataloader:
+            if step > t_total:
+                lg.log("Reached step limit, training done.")
+                break
             inputs = inputs.to(device)
             ttype = ttype.to(device)
             mask = mask.to(device)
@@ -104,6 +111,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
             loss.backward()
             optimizer.step()
             batch_num += 1
+            step += 1
 
         this_time = time.time()
         lg.log(
