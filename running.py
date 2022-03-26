@@ -174,7 +174,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     if model_name in ["textrnn", "textcnn"]:
         optimizer = optim.Adam(model.parameters(), lr=lr)
     else:
-        optimizer = BertAdam(model.parameters(), lr=lr, warmup=0.04, b2=0.9998, e=1e-9, t_total=t_batch*t_epoch)
+        optimizer = BertAdam(model.parameters(), lr=lr, warmup=0.04, b2=0.9998, e=1e-9, t_total=t_batch * t_epoch)
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
@@ -586,6 +586,8 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("--alarm", help="Alarm when epochs of training done, or testing done. Send messages to Wechat",
                         action="store_true")
+    parser.add_argument("--shut", help="Shut down server after session is terminated (smoothly or interrupted)",
+                        action="store_true")
     print("Parsing arguments......")
     args = parser.parse_args()
     ret, msg = valid(args)
@@ -605,5 +607,13 @@ if __name__ == "__main__":
     except Exception as e:
         print("\033[33mYour session has caused an exception, Please check and modify your settings.\033[0m")
         print("\033[33mException Info: {}\033[0m".format(e))
+        if args.shut:
+            print("Server will be shut down in 10 seconds......")
+            time.sleep(10)
+            os.system("shutdown")
     else:
         print("Session terminated smoothly.")
+        if args.shut:
+            print("Server will be shut down in 10 seconds......")
+            time.sleep(10)
+            os.system("shutdown")

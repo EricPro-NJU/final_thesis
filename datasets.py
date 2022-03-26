@@ -59,6 +59,12 @@ dataset_dict = {
             "mask": "/root/autodl-tmp/Yelptest_mask.txt",
             "label": "/root/autodl-tmp/Yelptest_label.txt"
         },
+        "corpus": {
+            "source": "/root/autodl-tmp/Yelpcorpus.txt",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Yelpcorpus_tokenized.txt",
+            "index": "/root/autodl-tmp/Yelpcorpus_indexed.txt"
+        },
         "num_class": 2
     },
     "Debugging": {
@@ -213,7 +219,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     return token_list, index_list, mask_list, label_list, length_list
 
 
-def separate_corpus(corpus_path, save_to=None):
+def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8"):
     '''
     ====================SOURCE DATA FILE FORMAT===============================================
     1. One sentence for a line
@@ -233,7 +239,7 @@ def separate_corpus(corpus_path, save_to=None):
     random_cache = None
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     max_size = 0
-    with open(corpus_path, "r", encoding="UTF-8-sig") as fp:
+    with open(corpus_path, "r", encoding=data_encoding) as fp:
         linereader = fp.readlines()
         file_len = len(linereader)
         for i, line in enumerate(linereader):
@@ -298,11 +304,11 @@ def separate_corpus(corpus_path, save_to=None):
                 fp.write("{}\n".format(item))
             for item in corpus_list1:
                 fp.write("{}\n".format(item))
-    print("Done, max token size is {}".format(max_size))
+    print("Done, max token size is {}, data size {}.".format(max_size, len0+len1))
     return corpus_list0, corpus_list1, max_size
 
 
-def index_corpus(corpus_path, tokens_path, save_to=None):
+def index_corpus(corpus_path, tokens_path, save_to=None, data_encoding="UTF-8"):
     '''
     :param corpus_path(input path for planA): same format of input of function separate_corpus
     :param tokens_path(input path for planB): the output format of function separate_corpus
@@ -324,7 +330,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None):
     next_sentence = []
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     if corpus_path is not None:
-        list0, list1, max_size = separate_corpus(corpus_path, tokens_path)
+        list0, list1, max_size = separate_corpus(corpus_path, tokens_path, data_encoding)
         tokens_list = list0 + list1
 
     else:
@@ -500,6 +506,7 @@ class TextCorpus(Dataset):
         src_file = dataset_dict[name][split]["source"]
         token_file = dataset_dict[name][split]["token"]
         index_file = dataset_dict[name][split]["index"]
+        encoding = dataset_dict[name][split]["source_encoding"]
         if read_from_cache:
             self.log("Reading data from cache file.")
             inputs = []
@@ -522,7 +529,7 @@ class TextCorpus(Dataset):
                     if debugging and (i + 1) >= 500:
                         break
         else:
-            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file)
+            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file, encoding)
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
@@ -553,4 +560,4 @@ if __name__ == "__main__":
     print(output_tokens)
     print(output_label)
     '''
-    dataset = TextDataSet("Yelp", "test", False, None)
+    dataset = TextCorpus("Yelp")
