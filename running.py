@@ -73,7 +73,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     warmup = 0.1
     t_total = 1e5
     optimizer = BertAdam(model.parameters(), lr=lr, warmup=warmup, t_total=t_total)
-    step = 0
+
     if state_path is not None:
         init_state = torch.load(state_path)
         model.load_state_dict(init_state['state_dict'])
@@ -82,7 +82,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
         lg.log("Read model checkpoint in epoch {}. Training will be initiated from epoch {}".format(init_epoch,
                                                                                                     init_epoch + 1))
     lg.log("Model Config Done.")
-
+    step = 0 + t_batch * init_epoch
     # pretraining BERT
     lg.log("Start PreTraining.")
     start_time = time.time()
