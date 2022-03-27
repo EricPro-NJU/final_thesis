@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import time
 from server import Log
-from pytorch_pretrained_bert import BertAdam, BertForPreTraining
+from pytorch_pretrained_bert import BertAdam, BertForPreTraining, BertForMaskedLM
 from datasets import TextDataSet, TextCorpus, dataset_dict
 import datasets
 from bert import SimpleBert, RecBert
@@ -42,7 +42,8 @@ def f1_count(tf_matrix, label_count, prediction_count, lg):
     return macro_f1.item(), micro_f1.item()
 
 
-def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None, read_from_cache="False"):
+def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=None, read_from_cache="False",
+                        language="english", method="both"):
     # datasets should be read using Dataset class into Dataloader
     # use uncased BERT pretraining model to further pretrain the model
     # set checkpoint each epoch trained
@@ -53,7 +54,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     lg.log("Indexing Training Data......")
     if datasets in dataset_dict:
         dataloader = DataLoader(
-            TextCorpus(datasets, split="corpus", read_from_cache=read_from_cache, log=lg),
+            TextCorpus(datasets, split="corpus", read_from_cache=read_from_cache, log=lg, language=language),
             batch_size=batch_size,
             shuffle=True
         )
@@ -64,8 +65,14 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
     lg.log("Index Training Data Done.")
 
     # prepare further_pretraining model
+    load = 'bert-base-uncased' if language == "english" else 'bert-base-chinese'
     lg.log("Model Config......")
-    model = BertForPreTraining.from_pretrained("bert-base-uncased").to(device)
+    if method == "both":
+        model = BertForPreTraining.from_pretrained(load).to(device)
+    elif method == "masklm":
+        model = BertForMaskedLM.from_pretrained(load).to(device)
+    else:
+        raise ValueError("Invalid training method.")
     lg.log("BertForPreTraining loaded.")
     init_epoch = 0
     t_epoch = 10
@@ -102,7 +109,12 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
             mask = mask.to(device)
             lm = lm.to(device)
             nxtsen = nxtsen.to(device)
-            loss = model(inputs, ttype, mask, lm, nxtsen)
+            if method == 'both':
+                loss = model(inputs, ttype, mask, lm, nxtsen)
+            elif method == 'masklm':
+                loss = model(inputs, ttype, mask, lm)
+            else:
+                raise ValueError("How do you come to this place???")
             if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
                 lg.log("epoch {}/{}, batch {}/{}, loss = {:.6f}".format(epoch + 1, t_epoch, batch_num + 1, t_batch,
                                                                         loss.item()))
@@ -141,7 +153,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
 
 
 def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lstm", state_path=None,
-                   read_from_cache=False):
+                   read_from_cache=False, language='english'):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -249,7 +261,7 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
 
 
 def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
-                further_pretrained=None, state_path=None, read_from_cache=False):
+                further_pretrained=None, state_path=None, read_from_cache=False, language="english"):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load training data and indexing texts
@@ -268,15 +280,13 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
     if model_name == "bert_linear":
-        model = SimpleBert(512, num_class).to(device)
+        model = SimpleBert(512, num_class, language=language).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
-        model = RecBert(512, 1024, num_class).to(device)
+        model = RecBert(512, 1024, num_class, language=language).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
     else:
-        model = SimpleBert(512, num_class).to(device)
-        lg.log("WARNING!! No implemented model called {}. Use default setting instead.".format(model_name))
-        lg.log("choosing BERT + Linear model.")
+        raise ValueError("How???")
     model.train()
 
     init_epoch = 0
@@ -349,7 +359,8 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     lg.writelog()
 
 
-def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="linear", read_from_cache=False):
+def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="linear",
+             read_from_cache=False, language="english"):
     torch.cuda.empty_cache()
     lg = Log(task_name)
     # load testing data and indexing texts
@@ -368,10 +379,10 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     # prepare BERT model and set hyper params
     lg.log("Model Config......")
     if model_name == "bert_linear":
-        model = SimpleBert(512, num_class).to(device)
+        model = SimpleBert(512, num_class, language=language).to(device)
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
-        model = RecBert(512, 1024, num_class).to(device)
+        model = RecBert(512, 1024, num_class, language=language).to(device)
         lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
     elif model_name == "textrnn":
         model = TextRNN(512, 1024, num_class).to(device)
@@ -489,6 +500,10 @@ def info(args):
     phase = 1
     if args.debug:
         print("Debugging Mode activated.")
+    print("Dataset: {}".format(args.data))
+    print("    number of class: {}".format(dataset_dict[args.data]['num_of_class']))
+    print("    language: {}".format(dataset_dict[args.data]['language']))
+    print("    further_prertaining method: {}".format(dataset_dict[args.data]['ftp_method']))
     if args.further_pretraining:
         print("Phase {}: Further Pretraining Bert Model with Standard Pretraining Tasks.".format(phase))
         print("    Task name: {}_FtP".format(args.name))
@@ -528,7 +543,11 @@ def info(args):
         print("    Batch Size: {}".format(args.test_batch_size))
         print("    Trained Model: {}".format(args.test_model_path if args.test_model_path else "From last phase"))
         print("    Data Read from Cache: {}".format("Yes" if args.read_from_cache else "No"))
-
+        phase += 1
+    if args.shut:
+        print("Phase {}: Shut Down.".format(phase))
+        print("    Shut down the server no matter it runs smoothly or not.")
+        phase += 1
 
 def session(args):
     if args.alarm:
@@ -538,7 +557,8 @@ def session(args):
         datasets.debugging = True
     if args.further_pretraining:
         task_name = "{}_FtP".format(args.name)
-        further_pretraining(task_name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache)
+        further_pretraining(task_name, args.data, args.ftp_batch_size, args.ftp_state_path, args.read_from_cache,
+                            dataset_dict[args.data]['language'], dataset_dict[args.data]['ftp_method'])
     if args.fine_tuning:
         if args.further_pretraining:
             if args.fit_ftp_path:
@@ -548,10 +568,10 @@ def session(args):
         else:
             ftp_path = args.fit_ftp_path
         fine_tuning(args.name, args.data, args.fit_batch_size, args.model, ftp_path, args.fit_state_path,
-                    args.read_from_cache)
+                    args.read_from_cache, dataset_dict[args.data]['language'])
     if args.training:
         basis_training(args.name, args.data, args.train_batch_size, args.model, args.train_state_path,
-                       args.read_from_cache)
+                       args.read_from_cache, dataset_dict[args.data]['language'])
     if args.testing:
         if args.fine_tuning or args.training:
             if args.test_model_path:
@@ -560,7 +580,8 @@ def session(args):
                 model_path = "/root/autodl-nas/checkpoint/{}.pb".format(args.name)
         else:
             model_path = args.test_model_path
-        evaluate(args.name, model_path, args.data, args.test_batch_size, args.model, args.read_from_cache)
+        evaluate(args.name, model_path, args.data, args.test_batch_size, args.model,
+                 args.read_from_cache, dataset_dict[args.data]['language'])
 
 
 if __name__ == "__main__":

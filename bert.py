@@ -7,12 +7,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class SimpleBert(nn.Module):
-    def __init__(self, seq_len, output_size):
+    def __init__(self, seq_len, output_size, language="english"):
         super(SimpleBert, self).__init__()
         self.seq_len = seq_len
         self.output_size = output_size
         self.d_model = 768
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # output: [batch_size, sequence_length, hidden_size]
         # choose the hidden of first token [CLS]
@@ -36,14 +36,14 @@ class SimpleBert(nn.Module):
 
 
 class RecBert(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, bidirec=True):
+    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english"):
         super(RecBert, self).__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.d_model = 768
         self.bidirec = bidirec
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # bert_output: [batch_size, seq_length, d_model]
         self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,

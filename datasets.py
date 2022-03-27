@@ -38,7 +38,9 @@ dataset_dict = {
             "token": "/root/autodl-tmp/IMDB_corpus_tokenized.txt",
             "index": "/root/autodl-tmp/IMDB_corpus_indexed.txt"
         },
-        "num_class": 2
+        "num_class": 2,
+        "language": "english",
+        "ftp_method": "both"
     },
     "Yelp": {
         "train": {
@@ -65,7 +67,67 @@ dataset_dict = {
             "token": "/root/autodl-tmp/Yelpcorpus_tokenized.txt",
             "index": "/root/autodl-tmp/Yelpcorpus_indexed.txt"
         },
-        "num_class": 2
+        "num_class": 2,
+        "language": "english",
+        "ftp_method": "both"
+    },
+    "AGNews": {
+        "train": {
+            "source": "/root/autodl-tmp/AGNtrain.json",
+            "source_type": "json",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/AGNtrain_token.txt",
+            "index": "/root/autodl-tmp/AGNtrain_index.txt",
+            "mask": "/root/autodl-tmp/AGNtrain_mask.txt",
+            "label": "/root/autodl-tmp/AGNtrain_label.txt"
+        },
+        "test": {
+            "source": "/root/autodl-tmp/AGNtest.json",
+            "source_type": "json",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/AGNtest_token.txt",
+            "index": "/root/autodl-tmp/AGNtest_index.txt",
+            "mask": "/root/autodl-tmp/AGNtest_mask.txt",
+            "label": "/root/autodl-tmp/AGNtest_label.txt"
+        },
+        "corpus": {
+            "source": "/root/autodl-tmp/AGNcorpus.txt",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/AGNcorpus_tokenized.txt",
+            "index": "/root/autodl-tmp/AGNcorpus_indexed.txt"
+        },
+        "num_class": 4,
+        "language": "english",
+        "ftp_method": "masklm"
+    },
+    "Sogou": {
+        "train": {
+            "source": "/root/autodl-tmp/Sogoutrain.csv",
+            "source_type": "csv",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Sogoutrain_token.txt",
+            "index": "/root/autodl-tmp/Sogoutrain_index.txt",
+            "mask": "/root/autodl-tmp/Sogoutrain_mask.txt",
+            "label": "/root/autodl-tmp/Sogoutrain_label.txt"
+        },
+        "test": {
+            "source": "/root/autodl-tmp/Sogoutest.csv",
+            "source_type": "csv",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Sogoutest_token.txt",
+            "index": "/root/autodl-tmp/Sogoutest_index.txt",
+            "mask": "/root/autodl-tmp/Sogoutest_mask.txt",
+            "label": "/root/autodl-tmp/Sogoutest_label.txt"
+        },
+        "corpus": {
+            "source": "/root/autodl-tmp/Sogoucorpus.txt",
+            "source_encoding": "UTF-8",
+            "token": "/root/autodl-tmp/Sogoucorpus_tokenized.txt",
+            "index": "/root/autodl-tmp/Sogoucorpus_indexed.txt"
+        },
+        "num_class": 6,
+        "language": "chinese",
+        "ftp_method": "both"
     },
     "Debugging": {
         "train": {
@@ -75,7 +137,9 @@ dataset_dict = {
             "mask": "D:/sample_data/mask",
             "label": "D:/sample_data/label"
         },
-        "num_class": 2
+        "num_class": 2,
+        "language": "english",
+        "ftp_method": "both"
     }
 }
 
@@ -124,7 +188,7 @@ def random_word(tokens, tokenizer):
 
 
 def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_path=None, data_label_path=None,
-               data_type="csv", data_encoding="UTF-8"):
+               data_type="csv", data_encoding="UTF-8", language='english'):
     '''
     ====================SOURCE DATA FILE FORMAT==========================
     IMDB:
@@ -172,7 +236,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
                 if (i + 1) % 10000 == 0:
                     print("Read Data {} / {}".format(i+1, len(reader)))
 
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
 
     for i, item in enumerate(data_list):
         tokens = tokenizer.tokenize(item[1])
@@ -219,7 +283,7 @@ def index_data(data_path, data_token_path=None, data_index_path=None, data_mask_
     return token_list, index_list, mask_list, label_list, length_list
 
 
-def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8"):
+def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8", language='english'):
     '''
     ====================SOURCE DATA FILE FORMAT===============================================
     1. One sentence for a line
@@ -237,7 +301,7 @@ def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8"):
     corpus_list1 = []  # random
     cache = None
     random_cache = None
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
     max_size = 0
     with open(corpus_path, "r", encoding=data_encoding) as fp:
         linereader = fp.readlines()
@@ -308,7 +372,7 @@ def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8"):
     return corpus_list0, corpus_list1, max_size
 
 
-def index_corpus(corpus_path, tokens_path, save_to=None, data_encoding="UTF-8"):
+def index_corpus(corpus_path, tokens_path, save_to=None, data_encoding="UTF-8", language='english'):
     '''
     :param corpus_path(input path for planA): same format of input of function separate_corpus
     :param tokens_path(input path for planB): the output format of function separate_corpus
@@ -328,7 +392,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None, data_encoding="UTF-8"):
     attn_mask = []
     masked_lm = []
     next_sentence = []
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
     if corpus_path is not None:
         list0, list1, max_size = separate_corpus(corpus_path, tokens_path, data_encoding)
         tokens_list = list0 + list1
@@ -416,7 +480,7 @@ def label_logits(labels, group_num):
 
 
 class TextDataSet(Dataset):
-    def __init__(self, name, split="train", read_from_cache=False, log=None):
+    def __init__(self, name, split="train", read_from_cache=False, log=None, language="english"):
         super(TextDataSet, self).__init__()
         self.name = name
         self.split = split
@@ -472,7 +536,8 @@ class TextDataSet(Dataset):
         else:
             token_list, index_list, mask_list, label_list, length_list = index_data(src_file, token_file, index_file,
                                                                                     mask_file,
-                                                                                    label_file, src_type, encoding)
+                                                                                    label_file, src_type,
+                                                                                    encoding, language)
             self.input_idx = torch.LongTensor(index_list)  # num * seq_len
             self.mask_idx = torch.LongTensor(mask_list)  # num * seq_len
             self.label_idx = torch.LongTensor(label_list)  # num
@@ -492,7 +557,7 @@ class TextDataSet(Dataset):
 
 
 class TextCorpus(Dataset):
-    def __init__(self, name, split="corpus", read_from_cache=False, log=None):
+    def __init__(self, name, split="corpus", read_from_cache=False, log=None, language="english"):
         super(TextCorpus, self).__init__()
         self.name = name
         self.split = split
@@ -529,7 +594,8 @@ class TextCorpus(Dataset):
                     if debugging and (i + 1) >= 500:
                         break
         else:
-            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file, encoding)
+            inputs, tokentype, attn, masklm, nextsen = index_corpus(src_file, token_file, index_file,
+                                                                    encoding, language)
         self.input_idx = torch.LongTensor(inputs)
         self.token_type = torch.LongTensor(tokentype)
         self.attn_mask = torch.LongTensor(attn)
