@@ -501,7 +501,7 @@ def info(args):
     if args.debug:
         print("Debugging Mode activated.")
     print("Dataset: {}".format(args.data))
-    print("    number of class: {}".format(dataset_dict[args.data]['num_of_class']))
+    print("    number of class: {}".format(dataset_dict[args.data]['num_class']))
     print("    language: {}".format(dataset_dict[args.data]['language']))
     print("    further_prertaining method: {}".format(dataset_dict[args.data]['ftp_method']))
     if args.further_pretraining:
