@@ -13,6 +13,7 @@ from basis import TextRNN, TextCNN, TransformerClassifier
 import sys
 import argparse
 import os
+import math
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -75,7 +76,7 @@ def further_pretraining(task_name, datasets="IMDB", batch_size=32, state_path=No
         raise ValueError("Invalid training method.")
     lg.log("BertForPreTraining loaded.")
     init_epoch = 0
-    t_epoch = 10
+    t_epoch = math.ceil(1e5 / t_batch)
     lr = 5e-5
     warmup = 0.1
     t_total = 1e5
