@@ -18,9 +18,9 @@ def getPadMask(seq_q, seq_k, pad):
         """
     batch_size, len_q = seq_q.size()
     _, len_k = seq_k.size()
-    mask = torch.zeros([batch_size, len_q, len_k])
-    matrix_q = seq_q.unsqueeze(1).transpose(-1, -2).repeat(1, 1, len_k)
-    matrix_k = seq_k.unsqueeze(1).repeat(1, len_q, 1)
+    mask = torch.zeros([batch_size, len_q, len_k]).to(device)
+    matrix_q = seq_q.unsqueeze(1).transpose(-1, -2).repeat(1, 1, len_k).to(device)
+    matrix_k = seq_k.unsqueeze(1).repeat(1, len_q, 1).to(device)
     mask[matrix_q == pad] = 1
     mask[matrix_k == pad] = 1
     return mask
@@ -32,9 +32,9 @@ def getDecoderMask(seq):
     :return: mask: N * tgt_len * tgt_len
     """
     batch_size, tgt_len = seq.size()
-    mask = torch.zeros(batch_size, tgt_len, tgt_len)
-    row_idx = torch.arange(0, tgt_len, 1).unsqueeze(0).unsqueeze(0).transpose(-1, -2).repeat(batch_size, 1, tgt_len)
-    col_idx = torch.arange(0, tgt_len, 1).unsqueeze(0).unsqueeze(0).repeat(batch_size, tgt_len, 1)
+    mask = torch.zeros(batch_size, tgt_len, tgt_len).to(device)
+    row_idx = torch.arange(0, tgt_len, 1).unsqueeze(0).unsqueeze(0).transpose(-1, -2).repeat(batch_size, 1, tgt_len).to(device)
+    col_idx = torch.arange(0, tgt_len, 1).unsqueeze(0).unsqueeze(0).repeat(batch_size, tgt_len, 1).to(device)
     mask[row_idx < col_idx] = 1
     mask[row_idx >= col_idx] = 0
     return mask
@@ -46,12 +46,11 @@ def getPositionalEmbedding(batch_size, seq_len, d_model):
         :param d_model:  dimension of embedding
         :return: pos_emb : N * seq_len * d_model
         """
-    pos_emb = torch.zeros(batch_size, seq_len, d_model)
-    pos_idx = torch.arange(0, seq_len).unsqueeze(0).unsqueeze(-1).repeat(batch_size, 1, d_model)
-    pow_idx = torch.arange(0, d_model)
+    pos_idx = torch.arange(0, seq_len).unsqueeze(0).unsqueeze(-1).repeat(batch_size, 1, d_model).to(device)
+    pow_idx = torch.arange(0, d_model).to(device)
     pow_idx[pow_idx % 2 == 1] -= 1
     pow_idx = pow_idx.unsqueeze(0).unsqueeze(0).repeat(batch_size, seq_len, 1)
-    pos_emb = pos_idx / torch.pow(10000, pow_idx / d_model)
+    pos_emb = pos_idx / torch.pow(10000, pow_idx / d_model).to(device)
     pos_emb[:, :, 0::2] = torch.sin(pos_emb[:, :, 0::2])
     pos_emb[:, :, 1::2] = torch.cos(pos_emb[:, :, 1::2])
     return pos_emb
@@ -97,9 +96,11 @@ class MultiheadAttention(nn.Module):
         K = self.WK(inputK)  # N * seq_len * (n_heads*dim_k)
         V = self.WV(inputV)  # N * seq_len * (n_heads*dim_v)
         scores = torch.matmul(Q, K.transpose(-1, -2)) / torch.sqrt(
-            torch.tensor([self.dimk]).cuda())  # N * seq_len * seq_len
+            torch.tensor([self.dimk]).to(device))
+        scores = scores.to(device) # N * seq_len * seq_len
         scores[mask == 1] = -1e9
         weights = torch.matmul(F.softmax(scores, dim=-1), V)  # N * seq_len * (n_heads*dim_v)
+        weights = weights.to(device)
         output = self.layernorm(self.linear(weights) + inputQ)
         return output
 
@@ -157,7 +158,7 @@ class TransformerEncoder(nn.Module):
         """
         batch_size = input_seq.shape[0]
         wemb = self.word_emb(input_seq)
-        pemb = getPositionalEmbedding(batch_size, self.conf.src_len, self.conf.d_model).cuda()
+        pemb = getPositionalEmbedding(batch_size, self.conf.src_len, self.conf.d_model).to(device)
         encoder_output = wemb + pemb
         # encoder_multiselfattn_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         for layer in self.layers:
@@ -203,7 +204,7 @@ class TransformerDecoder(nn.Module):
         """
         batch_size = input_seq.shape[0]
         wemb = self.word_emb(input_seq)
-        pemb = getPositionalEmbedding(batch_size, self.conf.tgt_len, self.conf.d_model).cuda()
+        pemb = getPositionalEmbedding(batch_size, self.conf.tgt_len, self.conf.d_model).to(device)
         # pad_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         # dec_mask = getDecoderMask(input_seq)
         # cross_mask = getPadMask(input_seq, encoder_output, self.conf.code_dict["pad"])
@@ -228,10 +229,10 @@ class Transformer(nn.Module):
         :param decoder_input: N * tgt_len
         :return: N * tgt_len
         """
-        encoder_mask = getPadMask(encoder_input, encoder_input, self.conf.code_dict["pad"])
-        decoder_mask = getPadMask(decoder_input, decoder_input, self.conf.code_dict["pad"]) + getDecoderMask(
-            decoder_input)
-        cross_mask = getPadMask(decoder_input, encoder_input, self.conf.code_dict["pad"])
+        encoder_mask = getPadMask(encoder_input, encoder_input, self.conf.code_dict["pad"]).to(device)
+        decoder_mask = (getPadMask(decoder_input, decoder_input, self.conf.code_dict["pad"]) + getDecoderMask(
+            decoder_input)).to(device)
+        cross_mask = getPadMask(decoder_input, encoder_input, self.conf.code_dict["pad"]).to(device)
         encoder_output = self.encoder(encoder_input, encoder_mask)
         decoder_output = self.decoder(decoder_input, encoder_output, decoder_mask, cross_mask)
         prob_matrix = F.softmax(self.linear(decoder_output), dim=-1)  # N * tgt_len * tgt_vocab_size
