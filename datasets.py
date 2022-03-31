@@ -626,6 +626,6 @@ if __name__ == "__main__":
     print(output_tokens)
     print(output_label)
     '''
-    trainset = TextDataSet('AGNews', split='train')
-    testset = TextDataSet('AGNews', split='test')
-    corpusset = TextCorpus('AGNews')
+    trainset = TextDataSet('Sogou', split='train', language='chinese')
+    testset = TextDataSet('AGNews', split='test', language='chinese')
+    corpusset = TextCorpus('AGNews', language='chinese')
