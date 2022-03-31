@@ -399,7 +399,7 @@ def index_corpus(corpus_path, tokens_path, save_to=None, data_encoding="UTF-8", 
     next_sentence = []
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
     if corpus_path is not None:
-        list0, list1, max_size = separate_corpus(corpus_path, tokens_path, data_encoding)
+        list0, list1, max_size = separate_corpus(corpus_path, tokens_path, data_encoding, language)
         tokens_list = list0 + list1
 
     else:
