@@ -334,9 +334,14 @@ def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8", language='
                 break
     len0 = len(corpus_list0)
     len1 = len(corpus_list1)
+    print("Read data {} continuous, {} random.".format(len0, len1))
     while len0 > len1:
         a = random.randint(0, len0 - 1)
         b = random.randint(0, len0 - 1)
+        if a > b:  # make sure that a <= b
+            temp = a
+            a = b
+            b = temp
         if a == b:
             item = corpus_list0[a]
             temp = item[0]
@@ -355,8 +360,8 @@ def separate_corpus(corpus_path, save_to=None, data_encoding="UTF-8", language='
             itemb[1] = temp
             itema[2] = 1
             itemb[2] = 1
-            del corpus_list0[a]
             del corpus_list0[b]
+            del corpus_list0[a]
             corpus_list1.append(itema)
             corpus_list1.append(itemb)
             len0 -= 2
