@@ -627,5 +627,5 @@ if __name__ == "__main__":
     print(output_label)
     '''
     trainset = TextDataSet('Sogou', split='train', language='chinese')
-    testset = TextDataSet('AGNews', split='test', language='chinese')
-    corpusset = TextCorpus('AGNews', language='chinese')
+    testset = TextDataSet('Sogou', split='test', language='chinese')
+    corpusset = TextCorpus('Sogou', language='chinese')
