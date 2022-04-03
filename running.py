@@ -8,7 +8,7 @@ from server import Log
 from pytorch_pretrained_bert import BertAdam, BertForPreTraining, BertForMaskedLM
 from datasets import TextDataSet, TextCorpus, dataset_dict
 import datasets
-from bert import SimpleBert, RecBert
+from bert import SimpleBert, RecBert, RecBert2
 from basis import TextRNN, TextCNN, TransformerClassifier
 import sys
 import argparse
@@ -19,7 +19,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 push_message = False
 
-model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm"}
+model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm", "bert_lstm2"}
 
 
 def f1_count(tf_matrix, label_count, prediction_count, lg):
@@ -285,7 +285,10 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language).to(device)
-        lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
+        lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
+    elif model_name == "bert_lstm2":
+        model = RecBert2(512, 1024, num_class, language=language).to(device)
+        lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     else:
         raise ValueError("How???")
     model.train()
@@ -384,7 +387,10 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
         lg.log("choosing BERT + Linear model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language).to(device)
-        lg.log("choosing BERT + {}LSTM model.".format("bi-directional "))
+        lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
+    elif model_name == "bert_lstm2":
+        model = RecBert2(512, 1024, num_class, language=language).to(device)
+        lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     elif model_name == "textrnn":
         model = TextRNN(512, 1024, num_class).to(device)
         lg.log("choosing {}TextRNN model.".format("bi-directional "))
@@ -462,11 +468,11 @@ def valid(args):
         return 2, "Dataset not found ({} is not in the dataset dict)".format(args.data)
     if args.model not in model_dict:
         return 2, "Model not found ({} is not in the model dict)".format(args.model)
-    if args.further_pretraining and args.model not in ["bert_linear", "bert_lstm"]:
+    if args.further_pretraining and args.model not in ["bert_linear", "bert_lstm", "bert_lstm2"]:
         return 2, "Further pretraining can only perform in Bert Models."
-    if args.fine_tuning and args.model not in ["bert_linear", "bert_lstm"]:
+    if args.fine_tuning and args.model not in ["bert_linear", "bert_lstm", "bert_lstm2"]:
         return 2, "Fine tuning can only perform in Bert Models."
-    if args.training and args.model in ["bert_linear", "bert_lstm"]:
+    if args.training and args.model in ["bert_linear", "bert_lstm", "bert_lstm2"]:
         return 2, "Please use fine tuning instead of training for Bert Models."
     if args.testing:
         if not (args.fine_tuning or args.training):
