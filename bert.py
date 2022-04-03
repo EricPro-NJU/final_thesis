@@ -72,7 +72,7 @@ class RecBert(nn.Module):
             #  select the final hidden state of the last layer [N, hidden*D]
             outputs = self.softmax(self.linear(self.dropout(hidden)))  # N * output_size
         else:
-            context = context.view(context.shape[0], -1)
+            context = context.contiguous().view(context.shape[0], -1)
             # select all hidden state: [N, hidden*D*L]
             outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
 
