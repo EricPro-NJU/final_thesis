@@ -82,7 +82,7 @@ class RecBert(nn.Module):
         elif self.method == 3:
             hidden = (hidden[-1] + hidden[-2]) if self.bidirec else hidden[-1]
             context = bert_output[:, 0, :] + hidden
-            context = nn.LayerNorm(context)
+            context = self.layernorm(context)
             outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
         else:
             raise ValueError("Error in RecBert, invalid method")
