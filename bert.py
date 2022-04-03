@@ -118,7 +118,7 @@ class RecBert2(nn.Module):
                 (hidden, cell) = self.rnn_backward(context, (hidden, cell))
                 feature[self.seq_len + i] = hidden
         feature = feature.transpose(0, 1)
-        feature = feature.view(batch_size, -1)
+        feature = feature.contiguous().view(batch_size, -1)
         feature = self.dropout(feature)
         output = self.softmax(self.linear(feature))
         return output
