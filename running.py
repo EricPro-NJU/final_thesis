@@ -423,7 +423,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             length = length.to(device)
             # output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
             #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
-            if model_name in ["bert_linear", "bert_lstm"]:
+            if model_name in ["bert_linear", "bert_lstm", "bert_lstm2"]:
                 output = model(inputs, mask)
             elif model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
