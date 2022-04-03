@@ -53,8 +53,8 @@ class RecBert(nn.Module):
         self.dropout = nn.Dropout(p=0.5)
         # hidden: [D * num_of_layers, N, hidden]
         # choose the hidden of last layer
-        input_idx = [1, 1, self.seq_len, 1]
-        self.linear = nn.Linear(self.hidden_size * (2 if bidirec else 1) * input_idx[method], self.output_size)
+        input_idx = [1, (2 if bidirec else 1), (2 if bidirec else 1) * self.seq_len, 1]
+        self.linear = nn.Linear(self.hidden_size * input_idx[method], self.output_size)
         self.layernorm = nn.LayerNorm(self.hidden_size)
         self.softmax = nn.Softmax(dim=-1)
 
