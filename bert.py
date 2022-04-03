@@ -80,7 +80,7 @@ class RecBert(nn.Module):
             # select all hidden state: [N, hidden*D*L]
             outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
         elif self.method == 3:
-            hidden = hidden[-1] + hidden[-2] if self.bidirec else hidden[-1]
+            hidden = (hidden[-1] + hidden[-2]) if self.bidirec else hidden[-1]
             context = bert_output[:, 0, :] + hidden
             context = nn.LayerNorm(context)
             outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size

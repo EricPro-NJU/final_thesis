@@ -644,18 +644,9 @@ if __name__ == "__main__":
         print(msg)
     info(args)
     print("Start Session.")
-    try:
-        session(args)
-    except Exception as e:
-        print("\033[33mYour session has caused an exception, Please check and modify your settings.\033[0m")
-        print("\033[33mException Info: {}\033[0m".format(e))
-        if args.shut:
-            print("Server will be shut down in 10 seconds......")
-            time.sleep(10)
-            os.system("shutdown")
-    else:
-        print("Session terminated smoothly.")
-        if args.shut:
-            print("Server will be shut down in 10 seconds......")
-            time.sleep(10)
-            os.system("shutdown")
+    session(args)
+    print("Session terminated smoothly.")
+    if args.shut:
+        print("Server will be shut down in 10 seconds......")
+        time.sleep(10)
+        os.system("shutdown")
