@@ -290,7 +290,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
         model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     elif model_name == "bert_lstm3":
-        model = RecBert(512, 1024, num_class, language=language, method=3).to(device)
+        model = RecBert(512, 768, num_class, language=language, method=3).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state + add&norm.".format("bi-directional "))
     else:
         raise ValueError("How???")
@@ -395,7 +395,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
         model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     elif model_name == "bert_lstm3":
-        model = RecBert(512, 1024, num_class, language=language, method=3).to(device)
+        model = RecBert(512, 768, num_class, language=language, method=3).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state + add&norm.".format("bi-directional "))
     elif model_name == "textrnn":
         model = TextRNN(512, 1024, num_class).to(device)
