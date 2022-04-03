@@ -82,11 +82,9 @@ class RecBert2(nn.Module):
         self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # bert_output: [batch_size, seq_length, d_model]
-        self.rnn_forward = nn.ModuleList([nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
-                                          for _ in range(seq_len)])
+        self.rnn_forward = nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
         if bidirec:
-            self.rnn_backward = nn.ModuleList([nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
-                                               for _ in range(seq_len)])
+            self.rnn_backward = nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
         self.dropout = nn.Dropout(p=0.5)
         # hidden: [2D, N, hidden]
         # choose the hidden of last layer
@@ -107,17 +105,17 @@ class RecBert2(nn.Module):
         hidden = torch.zeros([batch_size, self.hidden_size]).to(device)
         cell = torch.zeros([batch_size, self.hidden_size]).to(device)
         feature = torch.zeros([self.seq_len * (2 if self.bidirec else 1), batch_size, self.hidden_size]).to(device)
-        for i, layer in enumerate(self.rnn_forward):
+        for i in range(self.seq_len):
             context = bert_output[:, i, :]  # N * d_model
-            (hidden, cell) = layer(context, (hidden, cell))
+            (hidden, cell) = self.rnn_forward(context, (hidden, cell))
             feature[i] = hidden
         if self.bidirec:
             hidden = torch.zeros([batch_size, self.hidden_size]).to(device)
             cell = torch.zeros([batch_size, self.hidden_size]).to(device)
-            for i, layer in enumerate(self.rnn_backward):
+            for i in range(self.seq_len):
                 j = self.seq_len - 1 - i
                 context = bert_output[:, j, :]
-                (hidden, cell) = layer(context, (hidden, cell))
+                (hidden, cell) = self.rnn_backward(context, (hidden, cell))
                 feature[self.seq_len + i] = hidden
         feature = feature.transpose(0, 1)
         feature = feature.view(batch_size, -1)
