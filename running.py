@@ -19,8 +19,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 push_message = False
 
-model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm", "bert_lstm2"}
-
+model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm", "bert_lstm2", "bert_lstm3"}
+bert_dict = {"bert_linear", "bert_lstm", "bert_lstm2", "bert_lstm3"}
 
 def f1_count(tf_matrix, label_count, prediction_count, lg):
     num_class = label_count.shape[0]
@@ -289,6 +289,9 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     elif model_name == "bert_lstm2":
         model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
+    elif model_name == "bert_lstm3":
+        model = RecBert(512, 1024, num_class, language=language, method=3).to(device)
+        lg.log("choosing BERT + {}LSTM model + final hidden state + add&norm.".format("bi-directional "))
     else:
         raise ValueError("How???")
     model.train()
@@ -391,6 +394,9 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     elif model_name == "bert_lstm2":
         model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
+    elif model_name == "bert_lstm3":
+        model = RecBert(512, 1024, num_class, language=language, method=3).to(device)
+        lg.log("choosing BERT + {}LSTM model + final hidden state + add&norm.".format("bi-directional "))
     elif model_name == "textrnn":
         model = TextRNN(512, 1024, num_class).to(device)
         lg.log("choosing {}TextRNN model.".format("bi-directional "))
@@ -423,7 +429,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             length = length.to(device)
             # output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
             #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
-            if model_name in ["bert_linear", "bert_lstm", "bert_lstm2"]:
+            if model_name in bert_dict:
                 output = model(inputs, mask)
             elif model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
@@ -468,11 +474,11 @@ def valid(args):
         return 2, "Dataset not found ({} is not in the dataset dict)".format(args.data)
     if args.model not in model_dict:
         return 2, "Model not found ({} is not in the model dict)".format(args.model)
-    if args.further_pretraining and args.model not in ["bert_linear", "bert_lstm", "bert_lstm2"]:
+    if args.further_pretraining and args.model not in bert_dict:
         return 2, "Further pretraining can only perform in Bert Models."
-    if args.fine_tuning and args.model not in ["bert_linear", "bert_lstm", "bert_lstm2"]:
+    if args.fine_tuning and args.model not in bert_dict:
         return 2, "Fine tuning can only perform in Bert Models."
-    if args.training and args.model in ["bert_linear", "bert_lstm", "bert_lstm2"]:
+    if args.training and args.model in bert_dict:
         return 2, "Please use fine tuning instead of training for Bert Models."
     if args.testing:
         if not (args.fine_tuning or args.training):
