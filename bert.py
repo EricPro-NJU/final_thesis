@@ -36,13 +36,14 @@ class SimpleBert(nn.Module):
 
 
 class RecBert(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english"):
+    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english", method=1):
         super(RecBert, self).__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.d_model = 768
         self.bidirec = bidirec
+        self.method = method
         self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # bert_output: [batch_size, seq_length, d_model]
@@ -50,7 +51,7 @@ class RecBert(nn.Module):
         self.dropout = nn.Dropout(p=0.5)
         # hidden: [D * num_of_layers, N, hidden]
         # choose the hidden of last layer
-        self.linear = nn.Linear(self.hidden_size * (2 if bidirec else 1), self.output_size)
+        self.linear = nn.Linear(self.hidden_size * (2 if bidirec else 1) * (1 if method == 1 else self.seq_len), self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, inputs, mask):
@@ -65,60 +66,15 @@ class RecBert(nn.Module):
         bert_output = bert_feature[11]
         context, (hidden, cell) = self.lstm(bert_output)  # N * seq_len * hidden_size
         # hidden : [(2/1), N, hidden]
-        hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
-        #  select the final hidden state of the last layer [N, hidden*D]
-        outputs = self.softmax(self.linear(self.dropout(hidden)))  # N * output_size
+        # context: [N, seq_len, (2/1)*hidden]
+        if self.method == 1:
+            hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
+            #  select the final hidden state of the last layer [N, hidden*D]
+            outputs = self.softmax(self.linear(self.dropout(hidden)))  # N * output_size
+        else:
+            context = context.view(context.shape[0], -1)
+            # select all hidden state: [N, hidden*D*L]
+            outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
+
         return outputs
 
-
-class RecBert2(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english"):
-        super(RecBert2, self).__init__()
-        self.seq_len = seq_len
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.d_model = 768
-        self.bidirec = bidirec
-        self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
-        # 12-layer, 768-hidden, 12-heads, 110M parameters
-        # bert_output: [batch_size, seq_length, d_model]
-        self.rnn_forward = nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
-        if bidirec:
-            self.rnn_backward = nn.LSTMCell(input_size=self.d_model, hidden_size=hidden_size)
-        self.dropout = nn.Dropout(p=0.5)
-        # hidden: [2D, N, hidden]
-        # choose the hidden of last layer
-        self.linear = nn.Linear(self.hidden_size * self.seq_len * (2 if bidirec else 1), self.output_size)
-        self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, inputs, mask):
-        '''
-        :param inputs: N * seq_len
-        :param mask: N * seq_len
-        :var bert_output: N * seq_len * d_model
-        :return: N * output_size (after softmax, represent probability)
-            classification logits
-        '''
-        bert_feature, _ = self.bert(inputs, attention_mask=mask)
-        bert_output = bert_feature[11]  # N * seq_len * d_model
-        batch_size = bert_output.shape[0]
-        hidden = torch.zeros([batch_size, self.hidden_size]).to(device)
-        cell = torch.zeros([batch_size, self.hidden_size]).to(device)
-        feature = torch.zeros([self.seq_len * (2 if self.bidirec else 1), batch_size, self.hidden_size]).to(device)
-        for i in range(self.seq_len):
-            context = bert_output[:, i, :]  # N * d_model
-            (hidden, cell) = self.rnn_forward(context, (hidden, cell))
-            feature[i] = hidden
-        if self.bidirec:
-            hidden = torch.zeros([batch_size, self.hidden_size]).to(device)
-            cell = torch.zeros([batch_size, self.hidden_size]).to(device)
-            for i in range(self.seq_len):
-                j = self.seq_len - 1 - i
-                context = bert_output[:, j, :]
-                (hidden, cell) = self.rnn_backward(context, (hidden, cell))
-                feature[self.seq_len + i] = hidden
-        feature = feature.transpose(0, 1)
-        feature = feature.contiguous().view(batch_size, -1)
-        feature = self.dropout(feature)
-        output = self.softmax(self.linear(feature))
-        return output

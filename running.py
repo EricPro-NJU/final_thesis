@@ -8,7 +8,7 @@ from server import Log
 from pytorch_pretrained_bert import BertAdam, BertForPreTraining, BertForMaskedLM
 from datasets import TextDataSet, TextCorpus, dataset_dict
 import datasets
-from bert import SimpleBert, RecBert, RecBert2
+from bert import SimpleBert, RecBert
 from basis import TextRNN, TextCNN, TransformerClassifier
 import sys
 import argparse
@@ -287,7 +287,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
         model = RecBert(512, 1024, num_class, language=language).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
     elif model_name == "bert_lstm2":
-        model = RecBert2(512, 1024, num_class, language=language).to(device)
+        model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     else:
         raise ValueError("How???")
@@ -389,7 +389,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
         model = RecBert(512, 1024, num_class, language=language).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
     elif model_name == "bert_lstm2":
-        model = RecBert2(512, 1024, num_class, language=language).to(device)
+        model = RecBert(512, 1024, num_class, language=language, method=2).to(device)
         lg.log("choosing BERT + {}LSTM model + all hidden state.".format("bi-directional "))
     elif model_name == "textrnn":
         model = TextRNN(512, 1024, num_class).to(device)
