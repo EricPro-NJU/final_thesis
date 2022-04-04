@@ -174,13 +174,13 @@ def basis_training(task_name, datasets="IMDB", batch_size=24, model_name="sp_lst
     # prepare model and set hyper params
     lg.log("Model Config......")
     if model_name == "textrnn":
-        model = TextRNN(512, 1024, num_class).to(device)
+        model = TextRNN(512, 1024, num_class, language=language).to(device)
         lg.log("choosing {}TextRNN model.".format("bi-directional "))
     elif model_name == "textcnn":
-        model = TextCNN(512, 8, num_class, (5, 5)).to(device)
+        model = TextCNN(512, 8, num_class, (5, 5), language=language).to(device)
         lg.log("choosing TextCNN model.")
     elif model_name == "transformer":
-        model = TransformerClassifier(num_class).to(device)
+        model = TransformerClassifier(num_class, language=language).to(device)
         lg.log("choosing Transformer model.")
     else:
         raise ValueError("No such model named {}.".format(model_name))

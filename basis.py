@@ -8,21 +8,23 @@ from nltk.corpus import stopwords
 from transformer import TransformerEncoder, Configuration, getPadMask
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-uncased_bert_vocab_size = 30522
+uncased_bert_vocab_size = {'english': 30522, 'chinese': 21128}
 uncased_bert_emb_size = 768
 
 
 class TextRNN(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, vocab_size=uncased_bert_vocab_size,
-                 emb_size=uncased_bert_emb_size, bidirec=True):
+    def __init__(self, seq_len, hidden_size, output_size, vocab_size=None,
+                 emb_size=uncased_bert_emb_size, bidirec=True, language='english'):
         super(TextRNN, self).__init__()
+        if vocab_size is None:
+            vocab_size = uncased_bert_vocab_size
         self.seq_len = seq_len
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self.vocab_size = vocab_size
+        self.vocab_size = vocab_size[language]
         self.emb_size = emb_size
         self.bidirec = bidirec
-        self.embedding = nn.Embedding(vocab_size, emb_size)  # N * seq_len * emb_size
+        self.embedding = nn.Embedding(self.vocab_size, emb_size)  # N * seq_len * emb_size
         self.lstm = nn.LSTM(input_size=self.emb_size, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.5, num_layers=2)
         # hidden: 2D, N, hidden
@@ -48,16 +50,18 @@ class TextRNN(nn.Module):
 
 
 class TextCNN(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, kernel_size, vocab_size=uncased_bert_vocab_size,
-                emb_size=uncased_bert_emb_size):
+    def __init__(self, seq_len, hidden_size, output_size, kernel_size, vocab_size=None,
+                 emb_size=uncased_bert_emb_size, language='english'):
         super(TextCNN, self).__init__()
+        if vocab_size is None:
+            vocab_size = uncased_bert_vocab_size
         self.seq_len = seq_len
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.kernel_size = kernel_size  # tuple
-        self.vocab_size = vocab_size
+        self.vocab_size = vocab_size[language]
         self.emb_size = emb_size
-        self.embedding = nn.Embedding(vocab_size, emb_size)  # N * seq_len * emb_size
+        self.embedding = nn.Embedding(self.vocab_size, emb_size)  # N * seq_len * emb_size
         # stride(1), padding(0), dilation(1) are set to default
         # input: [N, 1, seq_len, emb_size]
         height1 = (seq_len - kernel_size[0] + 1) // 2
@@ -91,12 +95,14 @@ class TextCNN(nn.Module):
 
 
 class TransformerClassifier(nn.Module):
-    def __init__(self, num_class, seq_len=512):
+    def __init__(self, num_class, seq_len=512, language='english'):
         super(TransformerClassifier, self).__init__()
         conf = Configuration()
         self.conf = conf
         conf.src_len = seq_len
         conf.tgt_len = seq_len
+        conf.src_vocab_size = uncased_bert_vocab_size[language]
+        conf.tgt_vocab_size = uncased_bert_vocab_size[language]
         # N * src_len  -->  N * src_len * d_model
         self.encoder = TransformerEncoder(conf)
         # N * d_model  -->  N * num_class
