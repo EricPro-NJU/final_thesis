@@ -51,7 +51,7 @@ class RecBert(nn.Module):
         # bert_output: [batch_size, seq_length, d_model]
         self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.5, num_layers=num_layers)
-        self.dropout = nn.Dropout(p=0.5)
+        # self.dropout = nn.Dropout(p=0.5)
         # hidden: [D * num_of_layers, N, hidden]
         # choose the hidden of last layer
         input_idx = [(2 if bidirec else 1), (2 if bidirec else 1), (2 if bidirec else 1) * self.seq_len, 1]
@@ -83,19 +83,19 @@ class RecBert(nn.Module):
         if self.method == 0:
             hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
             #  select the final hidden state of the last layer [N, hidden*D]
-            outputs = self.softmax(self.linear(self.dropout(hidden)))  # N * output_size
+            outputs = self.softmax(self.linear(hidden))  # N * output_size
         elif self.method == 1:
             context = torch.sum(context, dim=1)  # N, (2/1)*hidden
-            outputs = self.softmax(self.linear(self.dropout(context)))
+            outputs = self.softmax(self.linear(context))  # N * output_size
         elif self.method == 2:
             context = context.contiguous().view(context.shape[0], -1)
             # select all hidden state: [N, hidden*D*L]
-            outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
+            outputs = self.softmax(self.linear(context))  # N * output_size
         elif self.method == 3:
             hidden = (hidden[-1] + hidden[-2]) if self.bidirec else hidden[-1]
             context = bert_output[:, 0, :] + hidden
             context = self.layernorm(context)
-            outputs = self.softmax(self.linear(self.dropout(context)))  # N * output_size
+            outputs = self.softmax(self.linear(context))  # N * output_size
         else:
             raise ValueError("Error in RecBert, invalid method")
         return outputs
