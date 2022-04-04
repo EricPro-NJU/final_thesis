@@ -37,7 +37,7 @@ class SimpleBert(nn.Module):
 
 
 class RecBert(nn.Module):
-    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english", method=1, num_layers=2):
+    def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english", method=0, num_layers=2):
         super(RecBert, self).__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size
@@ -54,7 +54,7 @@ class RecBert(nn.Module):
         self.dropout = nn.Dropout(p=0.5)
         # hidden: [D * num_of_layers, N, hidden]
         # choose the hidden of last layer
-        input_idx = [1, (2 if bidirec else 1), (2 if bidirec else 1) * self.seq_len, 1]
+        input_idx = [(2 if bidirec else 1), (2 if bidirec else 1), (2 if bidirec else 1) * self.seq_len, 1]
         self.linear = nn.Linear(self.hidden_size * input_idx[method], self.output_size)
         self.layernorm = nn.LayerNorm(self.hidden_size)
         self.softmax = nn.Softmax(dim=-1)
@@ -71,18 +71,21 @@ class RecBert(nn.Module):
         bert_output = bert_feature[11]  # N * seq_len * hidden_size
         _, idx_sort = torch.sort(length, dim=0, descending=True)
         _, idx_unsort = torch.sort(idx_sort, dim=0)
-        bert_output = bert_output.index_select(0, idx_sort)
+        bert_output = bert_output[idx_sort]
         length = length[idx_sort]
         bert_output_packed = pack_padded_sequence(input=bert_output, lengths=length.to("cpu"), batch_first=True)
         packed_context, (hidden, cell) = self.lstm(bert_output_packed)
-        context = pad_packed_sequence(packed_context, batch_first=True)
-        context = context[0].index_select(0, idx_unsort)
-        # hidden : [(2/1), N, hidden]
+        context, context_length = pad_packed_sequence(packed_context, batch_first=True)
+        context = context[idx_unsort]
+        # hidden : [(2/1) * num_layers, N, hidden]
         # context: [N, seq_len, (2/1)*hidden]
-        if self.method == 1:
+        if self.method == 0:
             hidden = torch.cat([hidden[-1], hidden[-2]], dim=-1) if self.bidirec else hidden[-1]
             #  select the final hidden state of the last layer [N, hidden*D]
             outputs = self.softmax(self.linear(self.dropout(hidden)))  # N * output_size
+        elif self.method == 1:
+            context = torch.sum(context, dim=1)  # N, (2/1)*hidden
+            outputs = self.softmax(self.linear(self.dropout(context)))
         elif self.method == 2:
             context = context.contiguous().view(context.shape[0], -1)
             # select all hidden state: [N, hidden*D*L]
