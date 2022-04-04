@@ -69,14 +69,15 @@ class RecBert(nn.Module):
         '''
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
         bert_output = bert_feature[11]  # N * seq_len * hidden_size
-        _, idx_sort = torch.sort(length, dim=0, descending=True)
-        _, idx_unsort = torch.sort(idx_sort, dim=0)
-        bert_output = bert_output[idx_sort]
-        length = length[idx_sort]
-        bert_output_packed = pack_padded_sequence(input=bert_output, lengths=length.to("cpu"), batch_first=True)
-        packed_context, (hidden, cell) = self.lstm(bert_output_packed)
-        context, context_length = pad_packed_sequence(packed_context, batch_first=True)
-        context = context[idx_unsort]
+        context, (hidden, cell) = self.lstm(bert_output)
+        # _, idx_sort = torch.sort(length, dim=0, descending=True)
+        # _, idx_unsort = torch.sort(idx_sort, dim=0)
+        # bert_output = bert_output[idx_sort]
+        # length = length[idx_sort]
+        # bert_output_packed = pack_padded_sequence(input=bert_output, lengths=length.to("cpu"), batch_first=True)
+        # packed_context, (hidden, cell) = self.lstm(bert_output_packed)
+        # context, context_length = pad_packed_sequence(packed_context, batch_first=True)
+        # context = context[idx_unsort]
         # hidden : [(2/1) * num_layers, N, hidden]
         # context: [N, seq_len, (2/1)*hidden]
         if self.method == 0:
