@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_pretrained_bert import BertModel
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -58,7 +59,7 @@ class RecBert(nn.Module):
         self.layernorm = nn.LayerNorm(self.hidden_size)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, inputs, mask):
+    def forward(self, inputs, mask, length):
         '''
         :param inputs: N * seq_len
         :param mask: N * seq_len
@@ -67,8 +68,16 @@ class RecBert(nn.Module):
             classification logits
         '''
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
-        bert_output = bert_feature[11]
-        context, (hidden, cell) = self.lstm(bert_output)  # N * seq_len * hidden_size
+        bert_output = bert_feature[11]  # N * seq_len * hidden_size
+        _, idx_sort = torch.sort(length, dim=0, descending=True)
+        _, idx_unsort = torch.sort(idx_sort, dim=0)
+        bert_output = bert_output.index_select(0, idx_sort)
+        length = length[idx_sort]
+        bert_output_packed = pack_padded_sequence(input=bert_output, lengths=length.to("cpu"), batch_first=True)
+        # bert_output = pack_padded_sequence(bert_output, length.to("cpu"), batch_first=True, enforce_sorted=False)
+        packed_context, (hidden, cell) = self.lstm(bert_output_packed)  # N * seq_len * hidden_size
+        context = pad_packed_sequence(packed_context, batch_first=True)
+        context = context[0].index_select(0, idx_unsort)
         # hidden : [(2/1), N, hidden]
         # context: [N, seq_len, (2/1)*hidden]
         if self.method == 1:
@@ -88,7 +97,7 @@ class RecBert(nn.Module):
             raise ValueError("Error in RecBert, invalid method")
         return outputs
 
-
+'''
 class RecBertCat(nn.Module):
     def __init__(self, seq_len, hidden_size, output_size, bidirec=True, language="english", num_layers=1):
         super(RecBertCat, self).__init__()
@@ -105,3 +114,4 @@ class RecBertCat(nn.Module):
         self.embedding = nn.Embedding(self.vocab_size, self.d_model)  # N * seq_len * emb_size
         self.lstm = nn.LSTM(input_size=self.d_model, hidden_size=hidden_size, batch_first=True, bidirectional=bidirec,
                             dropout=0.5, num_layers=num_layers)
+'''
