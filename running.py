@@ -323,11 +323,12 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     for epoch in range(init_epoch, t_epoch):
         batch_num = 0
         total_loss = 0.0
-        for inputs, mask, label, _ in trainloader:
+        for inputs, mask, label, length in trainloader:
             inputs = inputs.to(device)
             mask = mask.to(device)
             label = label.to(device)
-            output = model(inputs, mask)
+            length = length.to(device)
+            output = model(inputs, mask) if model_name == 'bert_linear' else model(inputs, mask, length)
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
@@ -430,7 +431,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             # output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
             #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
             if model_name in bert_dict:
-                output = model(inputs, mask)
+                output = model(inputs, mask) if model_name == 'bert_linear' else model(inputs, mask, length)
             elif model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
             elif model_name == "textrnn":

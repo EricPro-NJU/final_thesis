@@ -74,8 +74,7 @@ class RecBert(nn.Module):
         bert_output = bert_output.index_select(0, idx_sort)
         length = length[idx_sort]
         bert_output_packed = pack_padded_sequence(input=bert_output, lengths=length.to("cpu"), batch_first=True)
-        # bert_output = pack_padded_sequence(bert_output, length.to("cpu"), batch_first=True, enforce_sorted=False)
-        packed_context, (hidden, cell) = self.lstm(bert_output_packed)  # N * seq_len * hidden_size
+        packed_context, (hidden, cell) = self.lstm(bert_output_packed)
         context = pad_packed_sequence(packed_context, batch_first=True)
         context = context[0].index_select(0, idx_unsort)
         # hidden : [(2/1), N, hidden]
