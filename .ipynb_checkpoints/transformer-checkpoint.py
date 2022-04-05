@@ -56,21 +56,22 @@ def getPositionalEmbedding(batch_size, seq_len, d_model):
     pos_emb[:, :, 1::2] = torch.cos(pos_emb[:, :, 1::2])
     return pos_emb
 
+
 class Configuration:
     def __init__(self):
-        self.d_model = 512  # arbitrary
-        self.src_len = 5
-        self.tgt_len = 6
-        self.src_vocab_size = 10
-        self.tgt_vocab_size = 10
-        self.batch_size = 1  # arbitrary
-        self.dimq = 64  # arbitrary
-        self.dimv = 64  # arbitrary
-        self.n_heads = 8  # arbitrary
-        self.d_hidden = 2048  # arbitrary
-        self.n_layer = 6  # arbitrary
-        self.epoch_num = 10  # arbitrary
-        self.code_dict = {"pad": 0, "start": 1, "end": 2}
+        self.d_model = 768
+        self.src_len = 512
+        self.tgt_len = 512
+        self.src_vocab_size = 30522
+        self.tgt_vocab_size = 30522
+        self.batch_size = 16  # to_set
+        self.dimq = 64
+        self.dimv = 64
+        self.n_heads = 12
+        self.d_hidden = 1024
+        self.n_layer = 12
+        self.code_dict = {"pad": 0}
+
 
 class MultiheadAttention(nn.Module):
     def __init__(self, d_model, dimq, dimv, n_heads):
@@ -96,7 +97,8 @@ class MultiheadAttention(nn.Module):
         Q = self.WQ(inputQ)  # N * seq_len * (n_heads*dim_q)
         K = self.WK(inputK)  # N * seq_len * (n_heads*dim_k)
         V = self.WV(inputV)  # N * seq_len * (n_heads*dim_v)
-        scores = torch.matmul(Q, K.transpose(-1, -2)) / torch.sqrt(torch.tensor([self.dimk]).cuda())  # N * seq_len * seq_len
+        scores = torch.matmul(Q, K.transpose(-1, -2)) / torch.sqrt(
+            torch.tensor([self.dimk]).cuda())  # N * seq_len * seq_len
         scores[mask == 1] = -1e9
         weights = torch.matmul(F.softmax(scores, dim=-1), V)  # N * seq_len * (n_heads*dim_v)
         output = self.layernorm(self.linear(weights) + inputQ)
@@ -154,8 +156,12 @@ class TransformerEncoder(nn.Module):
         :param input_seq:  N * src_len
         :return: N * src_len * d_model
         """
+        print(input_seq.shape)
+        print(pad_mask.shape)
         wemb = self.word_emb(input_seq)
+        print(wemb.shape)
         pemb = getPositionalEmbedding(self.conf.batch_size, self.conf.src_len, self.conf.d_model).cuda()
+        print(pemb.shape)
         encoder_output = wemb + pemb
         # encoder_multiselfattn_mask = getPadMask(input_seq, input_seq, self.conf.code_dict["pad"])
         for layer in self.layers:
@@ -210,6 +216,7 @@ class TransformerDecoder(nn.Module):
 
         return decoder_output
 
+
 class Transformer(nn.Module):
     def __init__(self, conf):
         super(Transformer, self).__init__()
@@ -230,9 +237,10 @@ class Transformer(nn.Module):
         cross_mask = getPadMask(decoder_input, encoder_input, self.conf.code_dict["pad"])
         encoder_output = self.encoder(encoder_input, encoder_mask)
         decoder_output = self.decoder(decoder_input, encoder_output, decoder_mask, cross_mask)
-        prob_matrix = F.softmax(self.linear(decoder_output), dim=-1) # N * tgt_len * tgt_vocab_size
+        prob_matrix = F.softmax(self.linear(decoder_output), dim=-1)  # N * tgt_len * tgt_vocab_size
         output_seq = torch.argmax(prob_matrix, dim=-1)
         return output_seq, prob_matrix
+
 
 '''
 if __name__ == "__main__":
@@ -251,84 +259,84 @@ if __name__ == "__main__":
     print(tgt.size(), tgt.dtype)
     print(output.size(), output.dtype)
 '''
+if __name__ == "__main__":
 
-conf = Configuration()
+    conf = Configuration()
 
-sentences = [
-    # enc_input           dec_input         dec_output
-    ['ich mochte ein bier P', 'S i want a beer .', 'i want a beer . E'],
-    ['ich mochte ein cola P', 'S i want a coke .', 'i want a coke . E']
-]
+    sentences = [
+        # enc_input           dec_input         dec_output
+        ['ich mochte ein bier P', 'S i want a beer .', 'i want a beer . E'],
+        ['ich mochte ein cola P', 'S i want a coke .', 'i want a coke . E']
+    ]
 
-# Padding Should be Zero
-src_vocab = {'P': 0, 'ich': 1, 'mochte': 2, 'ein': 3, 'bier': 4, 'cola': 5}
-conf.src_vocab_size = len(src_vocab)
+    # Padding Should be Zero
+    src_vocab = {'P': 0, 'ich': 1, 'mochte': 2, 'ein': 3, 'bier': 4, 'cola': 5}
+    conf.src_vocab_size = len(src_vocab)
 
-tgt_vocab = {'P': 0, 'i': 1, 'want': 2, 'a': 3, 'beer': 4, 'coke': 5, 'S': 6, 'E': 7, '.': 8}
-idx2word = {i: w for i, w in enumerate(tgt_vocab)}
-conf.tgt_vocab_size = len(tgt_vocab)
+    tgt_vocab = {'P': 0, 'i': 1, 'want': 2, 'a': 3, 'beer': 4, 'coke': 5, 'S': 6, 'E': 7, '.': 8}
+    idx2word = {i: w for i, w in enumerate(tgt_vocab)}
+    conf.tgt_vocab_size = len(tgt_vocab)
 
-conf.src_len = 5  # enc_input max sequence length
-conf.tgt_len = 6  # dec_input(=dec_output) max sequence length
-
-
-def make_data(sentences):
-    enc_inputs, dec_inputs, dec_outputs = [], [], []
-    for i in range(len(sentences)):
-        enc_input = [[src_vocab[n] for n in sentences[i][0].split()]]  # [[1, 2, 3, 4, 0], [1, 2, 3, 5, 0]]
-        dec_input = [[tgt_vocab[n] for n in sentences[i][1].split()]]  # [[6, 1, 2, 3, 4, 8], [6, 1, 2, 3, 5, 8]]
-        dec_output = [[tgt_vocab[n] for n in sentences[i][2].split()]]  # [[1, 2, 3, 4, 8, 7], [1, 2, 3, 5, 8, 7]]
-
-        enc_inputs.extend(enc_input)
-        dec_inputs.extend(dec_input)
-        dec_outputs.extend(dec_output)
-
-    return torch.LongTensor(enc_inputs), torch.LongTensor(dec_inputs), torch.LongTensor(dec_outputs)
+    conf.src_len = 5  # enc_input max sequence length
+    conf.tgt_len = 6  # dec_input(=dec_output) max sequence length
 
 
-enc_inputs, dec_inputs, dec_outputs = make_data(sentences)
+    def make_data(sentences):
+        enc_inputs, dec_inputs, dec_outputs = [], [], []
+        for i in range(len(sentences)):
+            enc_input = [[src_vocab[n] for n in sentences[i][0].split()]]  # [[1, 2, 3, 4, 0], [1, 2, 3, 5, 0]]
+            dec_input = [[tgt_vocab[n] for n in sentences[i][1].split()]]  # [[6, 1, 2, 3, 4, 8], [6, 1, 2, 3, 5, 8]]
+            dec_output = [[tgt_vocab[n] for n in sentences[i][2].split()]]  # [[1, 2, 3, 4, 8, 7], [1, 2, 3, 5, 8, 7]]
+
+            enc_inputs.extend(enc_input)
+            dec_inputs.extend(dec_input)
+            dec_outputs.extend(dec_output)
+
+        return torch.LongTensor(enc_inputs), torch.LongTensor(dec_inputs), torch.LongTensor(dec_outputs)
 
 
-class MyDataSet(Data.Dataset):
-    def __init__(self, enc_inputs, dec_inputs, dec_outputs):
-        super(MyDataSet, self).__init__()
-        self.enc_inputs = enc_inputs
-        self.dec_inputs = dec_inputs
-        self.dec_outputs = dec_outputs
-
-    def __len__(self):
-        return self.enc_inputs.shape[0]
-
-    def __getitem__(self, idx):
-        return self.enc_inputs[idx], self.dec_inputs[idx], self.dec_outputs[idx]
+    enc_inputs, dec_inputs, dec_outputs = make_data(sentences)
 
 
-loader = Data.DataLoader(MyDataSet(enc_inputs, dec_inputs, dec_outputs), 2, True)
+    class MyDataSet(Data.Dataset):
+        def __init__(self, enc_inputs, dec_inputs, dec_outputs):
+            super(MyDataSet, self).__init__()
+            self.enc_inputs = enc_inputs
+            self.dec_inputs = dec_inputs
+            self.dec_outputs = dec_outputs
 
-conf.code_dict["start"] = 6
-conf.code_dict["end"] = 7
+        def __len__(self):
+            return self.enc_inputs.shape[0]
 
-
-model = Transformer(conf).cuda()
-criterion = nn.CrossEntropyLoss(ignore_index=conf.code_dict["pad"])
-optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.99)
-for epoch in range(30):
-    for enc_inputs, dec_inputs, dec_outputs in loader:
-      '''
-      enc_inputs: [batch_size, src_len]
-      dec_inputs: [batch_size, tgt_len]
-      dec_outputs: [batch_size, tgt_len]
-      '''
-      enc_inputs, dec_inputs, dec_outputs = enc_inputs.cuda(), dec_inputs.cuda(), dec_outputs.cuda()
-      # outputs: [batch_size * tgt_len, tgt_vocab_size]
-      outputs, prob_matrix = model(enc_inputs, dec_inputs)
-      loss = criterion(prob_matrix.view(prob_matrix.shape[0]*prob_matrix.shape[1], prob_matrix.shape[2]), dec_outputs.view(-1))
-      print('Epoch:', '%04d' % (epoch + 1), 'loss =', '{:.6f}'.format(loss))
-
-      optimizer.zero_grad()
-      loss.backward()
+        def __getitem__(self, idx):
+            return self.enc_inputs[idx], self.dec_inputs[idx], self.dec_outputs[idx]
 
 
-for name, param in model.named_parameters():
-    if param.requires_grad:
-        print(name)
+    loader = Data.DataLoader(MyDataSet(enc_inputs, dec_inputs, dec_outputs), 2, True)
+
+    conf.code_dict["start"] = 6
+    conf.code_dict["end"] = 7
+
+    model = Transformer(conf).cuda()
+    criterion = nn.CrossEntropyLoss(ignore_index=conf.code_dict["pad"])
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.99)
+    for epoch in range(30):
+        for enc_inputs, dec_inputs, dec_outputs in loader:
+            '''
+            enc_inputs: [batch_size, src_len]
+            dec_inputs: [batch_size, tgt_len]
+            dec_outputs: [batch_size, tgt_len]
+            '''
+            enc_inputs, dec_inputs, dec_outputs = enc_inputs.cuda(), dec_inputs.cuda(), dec_outputs.cuda()
+            # outputs: [batch_size * tgt_len, tgt_vocab_size]
+            outputs, prob_matrix = model(enc_inputs, dec_inputs)
+            loss = criterion(prob_matrix.view(prob_matrix.shape[0] * prob_matrix.shape[1], prob_matrix.shape[2]),
+                             dec_outputs.view(-1))
+            print('Epoch:', '%04d' % (epoch + 1), 'loss =', '{:.6f}'.format(loss))
+
+            optimizer.zero_grad()
+            loss.backward()
+
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(name)
