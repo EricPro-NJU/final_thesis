@@ -19,8 +19,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 push_message = False
 
-model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
-bert_dict = {"bert_linear", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
+model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_linear1", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
+bert_dict = {"bert_linear", "bert_linear1", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
+bln_dict = {"bert_linear", "bert_linear1"}
 
 def f1_count(tf_matrix, label_count, prediction_count, lg):
     num_class = label_count.shape[0]
@@ -283,6 +284,9 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     if model_name == "bert_linear":
         model = SimpleBert(512, num_class, language=language).to(device)
         lg.log("choosing BERT + Linear model.")
+    elif model_name == "bert_linear1":
+        model = SimpleBert(512, num_class, language=language, feat=1).to(device)
+        lg.log("choosing BERT + Linear + all layer ave model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language, method=0).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
@@ -331,7 +335,7 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
             mask = mask.to(device)
             label = label.to(device)
             length = length.to(device)
-            output = model(inputs, mask) if model_name == 'bert_linear' else model(inputs, mask, length)
+            output = model(inputs, mask) if model_name in bln_dict else model(inputs, mask, length)
             # N * output_size (after softmax, represent probability)  eg. N * 2
             loss = criterion(output, label)
             if (batch_num + 1) % 50 == 0 or (batch_num + 1) == t_batch:
@@ -392,6 +396,9 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     if model_name == "bert_linear":
         model = SimpleBert(512, num_class, language=language).to(device)
         lg.log("choosing BERT + Linear model.")
+    elif model_name == "bert_linear1":
+        model = SimpleBert(512, num_class, language=language, feat=1).to(device)
+        lg.log("choosing BERT + Linear + all layer ave model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language, method=0).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
@@ -437,7 +444,7 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
             # output = model(inputs, mask) if model_name in ["bert_linear", "bert_lstm"] else \
             #     (model(inputs) if model_name == "textcnn" else model(inputs, length))
             if model_name in bert_dict:
-                output = model(inputs, mask) if model_name == 'bert_linear' else model(inputs, mask, length)
+                output = model(inputs, mask) if model_name in bln_dict else model(inputs, mask, length)
             elif model_name in ["textcnn", "transformer"]:
                 output = model(inputs)
             elif model_name == "textrnn":

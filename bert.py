@@ -8,12 +8,13 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class SimpleBert(nn.Module):
-    def __init__(self, seq_len, output_size, language="english"):
+    def __init__(self, seq_len, output_size, language="english", feat=0):
         super(SimpleBert, self).__init__()
         self.seq_len = seq_len
         self.output_size = output_size
         self.d_model = 768
         self.bert = BertModel.from_pretrained('bert-base-uncased' if language == "english" else 'bert-base-chinese')
+        self.feat = feat
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # output: [batch_size, sequence_length, hidden_size]
         # choose the hidden of first token [CLS]
@@ -29,7 +30,10 @@ class SimpleBert(nn.Module):
             classification logits
         '''
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
-        bert_output = bert_feature[11]
+        if self.feat == 0:
+            bert_output = bert_feature[11]
+        else:
+            bert_output = torch.mean(bert_feature, dim=0)
         bert_output = bert_output[:, 0, :]
         context = self.linear(bert_output)
         outputs = self.softmax(context)
