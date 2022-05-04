@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from pytorch_pretrained_bert import BertModel
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -33,7 +34,9 @@ class SimpleBert(nn.Module):
         if self.feat == 0:
             bert_output = bert_feature[11]
         else:
-            bert_output = torch.mean(bert_feature, dim=0)
+            temp = np.array([item.cpu().detach().numpy() for item in bert_feature])
+            temp = torch.tensor(temp).to(device)
+            bert_output = torch.mean(temp, dim=0)
         bert_output = bert_output[:, 0, :]
         context = self.linear(bert_output)
         outputs = self.softmax(context)

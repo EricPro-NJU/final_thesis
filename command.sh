@@ -1,7 +1,4 @@
 #!/bin/sh
 
-python running.py -n Sogou_textrnn -d Sogou -m textrnn  -ev --read_from_cache --test_model_path /root/autodl-nas/checkpoint/Sogou_textrnn.pb
-python running.py -n Sogou_textcnn -d Sogou -m textcnn -tr -ev --read_from_cache
-python running.py -n Sogou_trans -d Sogou -m transformer -tr -ev --read_from_cache
+python running.py -n all_layer_mean -d IMDB -m bert_linear1 -fit -ev --fit_batch_size 20 --fit_ftp_path /root/autodl-nas/checkpoint/IMDB_FtP.pb --read_from_cache --alarm
 
-shutdown
