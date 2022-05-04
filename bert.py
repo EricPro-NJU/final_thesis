@@ -19,6 +19,9 @@ class SimpleBert(nn.Module):
         # 12-layer, 768-hidden, 12-heads, 110M parameters
         # output: [batch_size, sequence_length, hidden_size]
         # choose the hidden of first token [CLS]
+        if feat == 2:
+            self.params = nn.ParameterList(
+                [nn.Parameter(torch.tensor([1 / 12], device=device), requires_grad=True) for _ in range(12)])
         self.linear = nn.Linear(self.d_model, self.output_size)
         self.softmax = nn.Softmax(dim=-1)
 
@@ -34,9 +37,17 @@ class SimpleBert(nn.Module):
         if self.feat == 0:
             bert_output = bert_feature[11]
             bert_output = bert_output[:, 0, :]
-        else:
+        elif self.feat == 1:
             temp = torch.cat([item[:, 0, :].unsqueeze(0) for item in bert_feature], dim=0)
             bert_output = torch.mean(temp, dim=0)
+        elif self.feat == 2:
+            temp = torch.cat([item[:, 0, :].unsqueeze(0) for item in bert_feature], dim=0)  # 12, N, hidden
+            bert_output = self.params[0] * temp[0] + self.params[1] * temp[1] + self.params[2] * temp[2] + self.params[
+                3] * temp[3] + self.params[4] * temp[4] + self.params[5] * temp[5] + self.params[6] * temp[6] + self.params[
+                7] * temp[7] + self.params[8] * temp[8] + self.params[9] * temp[9] + self.params[10] * temp[10] + self.params[
+                11] * temp[11]
+        else:
+            raise ValueError
         context = self.linear(bert_output)
         outputs = self.softmax(context)
         return outputs
@@ -105,6 +116,7 @@ class RecBert(nn.Module):
         else:
             raise ValueError("Error in RecBert, invalid method")
         return outputs
+
 
 '''
 class RecBertCat(nn.Module):
