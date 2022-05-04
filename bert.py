@@ -35,7 +35,7 @@ class SimpleBert(nn.Module):
             bert_output = bert_feature[11]
             bert_output = bert_output[:, 0, :]
         else:
-            temp = torch.cat([item[:, 0, :].unsqueze(0) for item in bert_feature], dim=0)
+            temp = torch.cat([item[:, 0, :].unsqueeze(0) for item in bert_feature], dim=0)
             bert_output = torch.mean(temp, dim=0)
         context = self.linear(bert_output)
         outputs = self.softmax(context)

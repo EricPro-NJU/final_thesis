@@ -33,11 +33,10 @@ class SimpleBert(nn.Module):
         bert_feature, _ = self.bert(inputs, attention_mask=mask)
         if self.feat == 0:
             bert_output = bert_feature[11]
+            bert_output = bert_output[:, 0, :]
         else:
-            temp = np.array([item.cpu().detach().numpy() for item in bert_feature])
-            temp = torch.tensor(temp).to(device)
+            temp = torch.cat([item[:, 0, :].unsqueeze(0) for item in bert_feature], dim=0)
             bert_output = torch.mean(temp, dim=0)
-        bert_output = bert_output[:, 0, :]
         context = self.linear(bert_output)
         outputs = self.softmax(context)
         return outputs
