@@ -19,9 +19,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 push_message = False
 
-model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_linear1", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
-bert_dict = {"bert_linear", "bert_linear1", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
-bln_dict = {"bert_linear", "bert_linear1"}
+model_dict = {"textrnn", "textcnn", "transformer", "bert_linear", "bert_linear1", "bert_linear2", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
+bert_dict = {"bert_linear", "bert_linear1", "bert_linear2", "bert_lstm", "bert_lstm1", "bert_lstm2", "bert_lstm3"}
+bln_dict = {"bert_linear", "bert_linear1", "bert_linear2"}
 
 def f1_count(tf_matrix, label_count, prediction_count, lg):
     num_class = label_count.shape[0]
@@ -287,6 +287,9 @@ def fine_tuning(task_name, datasets="IMDB", batch_size=16, model_name="linear",
     elif model_name == "bert_linear1":
         model = SimpleBert(512, num_class, language=language, feat=1).to(device)
         lg.log("choosing BERT + Linear + all layer ave model.")
+    elif model_name == "bert_linear2":
+        model = SimpleBert(512, num_class, language=language, feat=2).to(device)
+        lg.log("choosing BERT + Linear + all layer weight model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language, method=0).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
@@ -399,6 +402,9 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     elif model_name == "bert_linear1":
         model = SimpleBert(512, num_class, language=language, feat=1).to(device)
         lg.log("choosing BERT + Linear + all layer ave model.")
+    elif model_name == "bert_linear2":
+        model = SimpleBert(512, num_class, language=language, feat=2).to(device)
+        lg.log("choosing BERT + Linear + all layer weight model.")
     elif model_name == "bert_lstm":
         model = RecBert(512, 1024, num_class, language=language, method=0).to(device)
         lg.log("choosing BERT + {}LSTM model + final hidden state.".format("bi-directional "))
