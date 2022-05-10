@@ -432,6 +432,9 @@ def evaluate(task_name, model_path, datasets="IMDB", batch_size=24, model_name="
     model.eval()
     criterion = nn.CrossEntropyLoss()
 
+    for name, parameters in model.named_parameters():
+        print(name, ':', parameters.size(), ':', parameters)
+
     # evaluate
     lg.log("Testing......")
     val_loss = 0.0
