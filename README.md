@@ -42,4 +42,4 @@ This paper study short text classification with pre-trained model BERT. There ar
 
 ## Full paper
 
-click [here](https://tex.nju.edu.cn/read/brddygzjfpmr) to get to the paper repo.
+click [here](THESIS_FINAL.pdf) 
